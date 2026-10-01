@@ -49,6 +49,9 @@ export const authService = {
       color: colorFor(input.username),
       passwordHash: await bcrypt.hash(input.password, 10),
       guest: false,
+      shirtColor: 'green',
+      hairStyle: 'hair01',
+      characterSetupComplete: false,
       createdAt: Date.now(),
     };
     await usersRepo.insert(user);

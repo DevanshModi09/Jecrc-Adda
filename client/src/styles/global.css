@@ -137,12 +137,14 @@ textarea {
   flex-direction: column;
 }
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
   align-items: center;
   gap: 28px;
   padding: 22px 40px 18px;
 }
 .topbar__logo {
+  justify-self: start;
   font-family: var(--px);
   font-size: 22px;
   color: var(--pink);
@@ -165,28 +167,77 @@ textarea {
 }
 .nav {
   display: flex;
+  justify-self: center;
   gap: 16px;
   font-size: 22px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  align-items: center;
 }
-.nav a {
+.nav > a,
+.nav__academics-trigger {
   color: var(--cyan);
   white-space: nowrap;
   position: relative;
 }
-.nav a.active {
+.nav__academics-trigger {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.nav > a.active,
+.nav__academics-trigger.active {
   color: var(--yellow);
 }
-.nav a.active::before {
+.nav > a.active::before,
+.nav__academics-trigger.active::before {
+  content: '▶ ';
+}
+.nav__academics {
+  position: relative;
+  z-index: 120;
+}
+.nav__caret {
+  display: inline-block;
+  font-size: 0.62em;
+  transform: translateY(-1px);
+}
+.nav__academics-trigger[aria-expanded='true'] .nav__caret {
+  transform: translateY(-1px) rotate(180deg);
+}
+.nav__dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  display: grid;
+  min-width: 190px;
+  padding: 8px;
+  border: 3px solid var(--cyan);
+  background: var(--panel-2);
+  box-shadow: 5px 5px 0 var(--bg-deep);
+}
+.nav__dropdown a {
+  padding: 7px 9px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.nav__dropdown a:hover,
+.nav__dropdown a:focus-visible {
+  background: var(--frame);
+  color: var(--ink);
+}
+.nav__dropdown a.active {
+  color: var(--yellow);
+}
+.nav__dropdown a.active::before {
   content: '▶ ';
 }
 /* The pixelverse is the headline feature, so its link glows. */
-.nav a.nav__glow {
+.nav > a.nav__glow {
   color: var(--pink);
   animation: nav-glow 2.4s ease-in-out infinite;
 }
-.nav a.nav__glow.active {
+.nav > a.nav__glow.active {
   color: var(--yellow);
 }
 @keyframes nav-glow {
@@ -216,7 +267,7 @@ textarea {
   vertical-align: 3px;
 }
 .topbar__player {
-  margin-left: auto;
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -774,8 +825,12 @@ a.line:hover {
 /* Narrow screens: the nav gets its own row under the logo instead of scrolling out of view. */
 @media (max-width: 1400px) {
   .topbar {
+    display: flex;
     flex-wrap: wrap;
     row-gap: 10px;
+  }
+  .topbar__player {
+    margin-left: auto;
   }
   .nav {
     order: 3;
@@ -831,7 +886,7 @@ a.line:hover {
   .blink {
     animation: none;
   }
-  .nav a.nav__glow {
+  .nav > a.nav__glow {
     animation: none;
     text-shadow: 0 0 8px rgba(255, 62, 165, 0.7);
   }

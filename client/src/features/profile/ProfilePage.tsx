@@ -4,10 +4,10 @@ import { api, ApiError } from '../../lib/api';
 import { sectionLabel, sectionKeyOf } from '../../lib/constants';
 import { keys, queryClient } from '../../lib/queryClient';
 import { toast } from '../../stores/toasts';
-import { Avatar, Field, PageHead, Panel } from '../../components/ui';
+import { Avatar, Field, Panel } from '../../components/ui';
 import { SectionFields } from '../../components/SectionFields';
 
-export function ProfilePage({ user }: { user: PublicUser }) {
+export function PlayerProfileEditor({ user }: { user: PublicUser }) {
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -25,7 +25,15 @@ export function ProfilePage({ user }: { user: PublicUser }) {
         bio: f.bio ?? '',
         interests: f.interests ?? '',
       });
-      queryClient.setQueryData(keys.me, next);
+      queryClient.setQueryData<PublicUser>(keys.me, (current) => current ? {
+        ...current,
+        name: next.name,
+        branch: next.branch,
+        year: next.year,
+        section: next.section,
+        bio: next.bio,
+        interests: next.interests,
+      } : next);
       toast('PROFILE SAVED', { kind: 'good' });
     } catch (err) {
       setError(err as ApiError);
@@ -35,10 +43,9 @@ export function ProfilePage({ user }: { user: PublicUser }) {
   }
 
   return (
-    <>
-      <PageHead title="PLAYER CARD" sub="A good bio and interests help people find you for teams and study groups." />
-      <div className="grid-2">
-        <Panel title="PREVIEW" tone="cyan">
+    <Panel title="PLAYER CARD" tone="cyan">
+      <div className="stack">
+        <div>
           <div className="row">
             <Avatar user={user} size={64} />
             <div>
@@ -52,9 +59,9 @@ export function ProfilePage({ user }: { user: PublicUser }) {
           </p>
           {user.bio && <p className="muted" style={{ marginTop: 10 }}>{user.bio}</p>}
           <p className="c-cyan" style={{ marginTop: 10 }}>{user.interests.join(' · ')}</p>
-        </Panel>
+        </div>
 
-        <form className="panel form-grid" onSubmit={submit}>
+        <form className="form-grid" onSubmit={submit}>
           <Field label="FULL NAME" error={error?.details.name}>
             <input className="input" name="name" required maxLength={60} defaultValue={user.name} />
           </Field>
@@ -71,6 +78,6 @@ export function ProfilePage({ user }: { user: PublicUser }) {
           </button>
         </form>
       </div>
-    </>
+    </Panel>
   );
 }

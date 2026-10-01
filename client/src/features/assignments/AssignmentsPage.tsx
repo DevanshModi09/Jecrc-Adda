@@ -85,7 +85,7 @@ export function AssignmentsPage() {
       ) : (
         <div className="panel">
           <Empty title="NO SUBJECTS">
-            Your section has no timetable yet. <Link to="/profile">Check your section</Link>
+            Your section has no timetable yet. <Link to="/players">Check your section</Link>
           </Empty>
         </div>
       )}

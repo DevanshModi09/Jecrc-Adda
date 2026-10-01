@@ -123,11 +123,11 @@ export function SquadPanel({ me }: { me: PublicUser }) {
         </ul>
       ) : (
         <Empty title="SOLO RUN">
-          Nobody from {me.branch} Y{me.year} · {me.section} yet. <Link to="/people">Invite your class</Link>
+          Nobody from {me.branch} Y{me.year} · {me.section} yet. <Link to="/players?tab=find">Invite your class</Link>
         </Empty>
       )}
       {squad.length > 6 && (
-        <Link to="/people" className="squad__more">
+        <Link to="/players?tab=find" className="squad__more">
           +{squad.length - 6} MORE
         </Link>
       )}

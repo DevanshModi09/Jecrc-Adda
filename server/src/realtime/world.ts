@@ -4,7 +4,7 @@ import { PLATE_TTL_MS, WORLD_SIZE, type Facing, type Plate, type WorldPlayer } f
 // The client handles collisions against the map; the server keeps players honest
 // on bounds and speed, and decides who is close enough to hear proximity chat.
 
-export const SPAWN = { x: 27.5, y: 33 } as const;
+export const SPAWN = { x: 31, y: 5 } as const;
 export const HEARING_RADIUS = 7; // tiles
 const MAX_SPEED = 9; // tiles/second, generous vs. the client's 5 to absorb network jitter
 const MIN_MOVE_INTERVAL = 45; // ms; extra moves are dropped, not queued
@@ -30,7 +30,7 @@ const view = ({ connections: _c, lastMoveAt: _l, ...p }: Entry): WorldPlayer => 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 export const world = {
-  join(user: { id: string; name: string; color: string }, connId: string): { you: WorldPlayer; players: WorldPlayer[]; isNew: boolean } {
+  join(user: Pick<WorldPlayer, 'id' | 'name' | 'color' | 'shirtColor' | 'hairStyle'>, connId: string): { you: WorldPlayer; players: WorldPlayer[]; isNew: boolean } {
     let entry = players.get(user.id);
     const isNew = !entry;
     if (!entry) {
@@ -38,7 +38,17 @@ export const world = {
       players.set(user.id, entry);
     }
     entry.connections.add(connId);
+    entry.shirtColor = user.shirtColor ?? null;
+    entry.hairStyle = user.hairStyle ?? 'hair01';
     return { you: view(entry), players: [...players.values()].map(view), isNew };
+  },
+
+  updateCharacter(user: Pick<WorldPlayer, 'id' | 'shirtColor' | 'hairStyle'>): WorldPlayer | null {
+    const entry = players.get(user.id);
+    if (!entry) return null;
+    entry.shirtColor = user.shirtColor ?? null;
+    entry.hairStyle = user.hairStyle ?? 'hair01';
+    return view(entry);
   },
 
   /** Returns true when the user has left the world entirely (last tab closed). */

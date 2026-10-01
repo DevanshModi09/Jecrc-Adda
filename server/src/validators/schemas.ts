@@ -1,4 +1,11 @@
 import { z } from 'zod';
+import { HAIR_STYLES, SHIRT_COLORS } from '@adda/shared';
+
+export const characterSchema = z.object({
+  shirtColor: z.enum(Object.keys(SHIRT_COLORS) as [keyof typeof SHIRT_COLORS, ...(keyof typeof SHIRT_COLORS)[]]).nullable(),
+  hairStyle: z.enum(HAIR_STYLES),
+}).strict();
+export type CharacterInput = z.infer<typeof characterSchema>;
 
 const text = (max: number) => z.string().trim().max(max);
 const required = (max: number, label: string) => z.string().trim().min(1, `${label} is required`).max(max);

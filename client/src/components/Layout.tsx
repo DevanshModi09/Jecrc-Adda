@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Link, Outlet, useLocation } from 'react-router';
 import type { PublicUser } from '@adda/shared';
 import { useConversations, useDeadlines, useFriends } from '../hooks/queries';
@@ -7,16 +8,19 @@ import { useLive } from '../stores/live';
 import { Toaster } from './Toaster';
 import { GameModal } from './GameModal';
 
-const LINKS = [
+const PRIMARY_LINKS = [
+  { to: '/', label: 'DASHBOARD' },
   { to: '/campus', label: 'CAMPUS' },
   { to: '/feed', label: 'FEED' },
   { to: '/events', label: 'EVENTS' },
-  { to: '/people', label: 'PEOPLE' },
+  { to: '/players', label: 'PLAYERS' },
+];
+
+const ACADEMIC_LINKS = [
   { to: '/deadlines', label: 'DEADLINES' },
   { to: '/assignments', label: 'ASSIGNMENTS' },
   { to: '/timetable', label: 'TIMETABLE' },
   { to: '/attendance', label: 'ATTENDANCE' },
-  { to: '/desks', label: 'CODE DESK' },
 ];
 
 export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => void }) {
@@ -25,7 +29,8 @@ export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => v
   const { data: convos } = useConversations();
   const unread = convos?.reduce((n, c) => n + c.unread, 0) ?? 0;
   const requests = useFriends().data?.incoming.length ?? 0;
-  const onChat = useLocation().pathname.startsWith('/chat');
+  const location = useLocation();
+  const onChat = location.pathname.startsWith('/chat');
   useDeadlineNudges();
 
   return (
@@ -36,10 +41,16 @@ export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => v
           ADDA
         </Link>
         <nav className="nav" aria-label="Main">
-          {LINKS.map((l) => (
+          {PRIMARY_LINKS.slice(0, 3).map((l) => (
             <NavLink key={l.to} to={l.to} className={l.to === '/campus' ? 'nav__glow' : undefined}>
               {l.label}
-              {l.to === '/people' && requests > 0 && (
+            </NavLink>
+          ))}
+          <AcademicsMenu pathname={location.pathname} />
+          {PRIMARY_LINKS.slice(3).map((l) => (
+            <NavLink key={l.to} to={l.to}>
+              {l.label}
+              {l.to === '/players' && requests > 0 && (
                 <span className="nav__badge" aria-label={`${requests} friend requests`}>
                   {requests}
                 </span>
@@ -48,7 +59,7 @@ export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => v
           ))}
         </nav>
         <div className="topbar__player">
-          <Link to="/profile" title="Edit profile">
+          <Link to="/players" title="My player">
             P1 {user.name.split(' ')[0]?.toUpperCase()} · {user.section ? `SEC ${user.section}` : ''} · LV {levelOf(deadlines)}
             {user.role === 'admin' && <span className="c-yellow"> · ADMIN</span>}
           </Link>
@@ -76,6 +87,62 @@ export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => v
       {!onChat && <ChatButton unread={unread} />}
       <Toaster />
       <GameModal me={user} />
+    </div>
+  );
+}
+
+function AcademicsMenu({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const active = ACADEMIC_LINKS.some(({ to }) => pathname === to || pathname.startsWith(`${to}/`));
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const closeOutside = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [open]);
+
+  return (
+    <div className="nav__academics" ref={menuRef}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={`nav__academics-trigger${active ? ' active' : ''}`}
+        aria-expanded={open}
+        aria-haspopup="true"
+        aria-controls="academics-nav-menu"
+        onClick={() => setOpen((current) => !current)}
+      >
+        ACADEMICS <span className="nav__caret" aria-hidden="true">▼</span>
+      </button>
+      {open && (
+        <div id="academics-nav-menu" className="nav__dropdown" aria-label="Academics">
+          {ACADEMIC_LINKS.map((link) => (
+            <NavLink key={link.to} to={link.to} onClick={() => setOpen(false)}>
+              {link.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,66 +1,81 @@
 import { Link } from 'react-router';
-import { useDeadlines, useEvents, useFreeRooms, useFriends, useRooms } from '../../hooks/queries';
+import { useFreeRooms } from '../../hooks/queries';
 import { useNow } from '../../hooks/useNow';
-import { countdown, fmtShortDate, fmtTime } from '../../lib/time';
 import { realtime } from '../../lib/realtime';
-import { useLive } from '../../stores/live';
 import { GAME_NAMES, type GameKind, type PublicUser, type WorldPlayer } from '@adda/shared';
 import { games } from '../../stores/games';
 import type { Seating } from './engine';
 import type { Zone, ZoneId } from './map';
 
-// Café menus. Ordering just says it out loud to whoever is sitting nearby.
+// Mess / café menus. Ordering says it out loud and server brings it to your table.
 const MENUS: Partial<Record<ZoneId, { blurb: string; items: [string, number, string][] }>> = {
-  chai: {
-    blurb: 'Grab a stool. Stop on one to sit.',
+  mess: {
+    blurb: 'Campus Mess. Sit down at a table and the waiter serves your order.',
     items: [
-      ['Cutting chai', 10, '☕'],
-      ['Bun maska', 25, '🍞'],
-      ['Samosa', 15, '🥟'],
-      ['Cold coffee', 40, '🧋'],
-    ],
-  },
-  foodcourt: {
-    blurb: 'Three stalls, zero empty tables at 1 PM.',
-    items: [
-      ['Chole bhature', 70, '🍛'],
-      ['Veg thali', 90, '🍱'],
-      ['Paneer roll', 60, '🌯'],
-      ['Masala dosa', 65, '🥞'],
-    ],
-  },
-  maggi: {
-    blurb: 'Open till late. Exam-night fuel.',
-    items: [
-      ['Masala maggi', 40, '🍜'],
-      ['Cheese maggi', 55, '🧀'],
-      ['Egg maggi', 50, '🍳'],
-      ['Nimbu pani', 20, '🍋'],
+      ['Special Veg Thali', 60, '🍱'],
+      ['Rajma Chawal', 50, '🍛'],
+      ['Aloo Paratha', 35, '🥞'],
+      ['Masala Chai', 10, '☕'],
+      ['Maggi Bowl', 40, '🍜'],
+      ['Cold Coffee', 35, '🧋'],
     ],
   },
   lawn: {
-    blurb: 'Umbrella tables and bean bags. The juice cart is up top.',
+    blurb: 'Central Lawn. Shaded grass, open air, and fresh refreshments.',
     items: [
-      ['Mango shake', 50, '🥭'],
-      ['Sugarcane juice', 30, '🥤'],
+      ['Nimbu Pani', 20, '🍋'],
+      ['Cold Coffee', 35, '🧋'],
+      ['Cutting Chai', 10, '☕'],
+      ['Samosa', 15, '🥟'],
     ],
   },
 };
 
 const HANGOUTS: Partial<Record<ZoneId, { blurb: string; lines: [string, string][] }>> = {
-  garden: {
-    blurb: 'Bonfire and bean bags. Best spot after 6.',
+  lawn: {
+    blurb: 'Central Lawn. Green garden space in the heart of campus.',
     lines: [
-      ['START A JAM', 'who has a guitar? let’s jam 🎸'],
-      ['ANTAKSHARI', 'antakshari round, starting with “M” 🎤'],
-      ['JUST VIBES', 'chilling by the fire 🔥 come sit'],
+      ['START A JAM', 'who has a guitar? let’s jam on Central Lawn 🎸'],
+      ['STUDY GROUP', 'revising lecture notes in the sun 📚'],
+      ['CHILL VIBES', 'relaxing by the fountain ⛲ come sit'],
+    ],
+  },
+  bh1: {
+    blurb: 'Boys Hostel 1. Rooms, corridors and late night debates.',
+    lines: [
+      ['ROOM 204', 'anyone awake in BH1? chai trip downstairs ☕'],
+      ['EXAM PREP', 'discussing tomorrow’s lab viva 📝'],
+      ['FIFA MATCH', 'BH1 common room FIFA tournament 🎮'],
+    ],
+  },
+  bh2: {
+    blurb: 'Boys Hostel 2. Upper campus hostel beside the courts.',
+    lines: [
+      ['HOOPS', 'who is down for basketball downstairs? 🏀'],
+      ['ROOM 312', 'study session in BH2 corridor 📖'],
+      ['FOOD RUN', 'heading to the mess for dinner 🍛'],
+    ],
+  },
+  bh3: {
+    blurb: 'Boys Hostel 3. South campus hostel below the Ground.',
+    lines: [
+      ['GROUND RUN', 'morning laps on the track 🏃‍♂️'],
+      ['COMMON ROOM', 'chilling in BH3 common room 🛋️'],
+      ['NIGHT WALK', 'heading up to Main Gate for fresh air 🌙'],
+    ],
+  },
+  gh: {
+    blurb: 'Girls Hostel. East campus hostel beside the tennis court.',
+    lines: [
+      ['COMMON ROOM', 'movie night in the common room 🍿'],
+      ['TENNIS MATCH', 'tennis practice outside court 🎾'],
+      ['CHAI TIME', 'tea break between classes 🫖'],
     ],
   },
 };
 
 const sayNearby = (text: string) => realtime.send({ type: 'world:say', text });
 
-/** What each building does when you walk into it: a live window into the real feature. */
 interface Props {
   zone: Zone;
   seating: Seating | null;
@@ -75,24 +90,22 @@ export function ZonePanel({ zone, seating, players, me, onSit }: Props) {
       <h2 className="panel__title">{zone.label}</h2>
       {zone.id === 'vib' || zone.id === 'nyb' ? (
         <BuildingRooms building={zone.id.toUpperCase()} />
-      ) : zone.id === 'codelab' ? (
-        <CodeLab />
-      ) : zone.id === 'library' ? (
-        <Library />
-      ) : zone.id === 'events' ? (
-        <EventGround />
-      ) : zone.id === 'canteen' ? (
-        <Canteen />
-      ) : MENUS[zone.id] ? (
-        <Cafe menu={MENUS[zone.id]!} seating={seating} onSit={onSit} />
-      ) : zone.id === 'gamezone' ? (
-        <GameZone players={players.filter((p) => p.id !== me.id)} />
+      ) : zone.id === 'jmch' ? (
+        <JMCHPanel />
+      ) : zone.id === 'mess' ? (
+        <Cafe menu={MENUS.mess!} seating={seating} onSit={onSit} />
+      ) : zone.id === 'football' ||
+        zone.id === 'basketball' ||
+        zone.id === 'cricket' ||
+        zone.id === 'tennis' ||
+        zone.id === 'ground' ? (
+        <SportsPanel zoneId={zone.id} players={players.filter((p) => p.id !== me.id)} />
       ) : HANGOUTS[zone.id] ? (
         <Hangout spot={HANGOUTS[zone.id]!} />
-      ) : zone.id === 'plaza' ? (
-        <p className="muted">Hang out here. Anything you say reaches players within about 7 tiles.</p>
+      ) : zone.id === 'maingate' || zone.id === 'gate3' || zone.id === 'gate16' ? (
+        <GatePanel zoneId={zone.id} label={zone.label} />
       ) : (
-        <p className="muted">Welcome to campus. Walk into a building to use it: VIB/NYB show free rooms, the Code Lab has live code desks, the Library has your deadlines. Hungry? Food Street is east, past the Code Lab.</p>
+        <p className="muted">Welcome to JECRC Campus. Walk into academic blocks to view free rooms, visit the mess to dine, or challenge students on the sports grounds.</p>
       )}
     </section>
   );
@@ -101,89 +114,58 @@ export function ZonePanel({ zone, seating, players, me, onSit }: Props) {
 function BuildingRooms({ building }: { building: string }) {
   const now = useNow(30_000);
   const { data } = useFreeRooms(now);
-  if (!data) return <p className="muted">SCANNING…</p>;
-  const free = data.free.filter((r) => r.startsWith(building));
+  const isVib = building === 'VIB';
   return (
     <>
-      <p className="muted">
-        {data.period ? `FREE IN ${data.period.start}–${data.period.end}` : 'NO CLASSES RUNNING'} · {free.length} ROOMS
+      <p className="dim" style={{ marginBottom: 6 }}>
+        {isVib ? 'Engineering Block. Classes, labs and lecture rooms.' : 'Academic Block. Classes and lecture rooms.'}
       </p>
-      <div className="free__rooms campus__rooms">
-        {free.slice(0, 14).map((r) => (
-          <span key={r} className="free__room">{r.replace(`${building} `, '')}</span>
-        ))}
-      </div>
-      <Link to="/timetable" className="px-xs">OPEN TIMETABLE ▶</Link>
+      {!data ? (
+        <p className="muted">SCANNING ROOMS…</p>
+      ) : (
+        <>
+          <p className="muted">
+            {data.period ? `FREE IN ${data.period.start}–${data.period.end}` : 'NO CLASSES RUNNING'} · {data.free.filter((r) => r.startsWith(building)).length} ROOMS
+          </p>
+          <div className="free__rooms campus__rooms">
+            {data.free
+              .filter((r) => r.startsWith(building))
+              .slice(0, 14)
+              .map((r) => (
+                <span key={r} className="free__room">
+                  {r.replace(`${building} `, '')}
+                </span>
+              ))}
+          </div>
+        </>
+      )}
+      <Link to="/timetable" className="px-xs">
+        OPEN TIMETABLE ▶
+      </Link>
     </>
   );
 }
 
-function CodeLab() {
-  const { data } = useRooms();
-  const rooms = [...(useLive((s) => s.rooms) ?? data ?? [])].sort((a, b) => b.members.length - a.members.length);
+function JMCHPanel() {
   return (
     <>
-      {rooms.slice(0, 4).map((r) => (
-        <Link key={r.id} to={`/desks/${r.id}`} className="line">
-          <span className="upper">{r.name}</span>
-          <span className={r.members.length ? 'c-green' : 'dim'}>{r.members.length}P ▶</span>
+      <p className="dim" style={{ marginBottom: 8 }}>
+        Medical College area at JECRC University. Lecture theatres, labs, and healthcare research facilities.
+      </p>
+      <div className="stack" style={{ gap: 8 }}>
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <span className="c-cyan">STATUS</span>
+          <span className="c-green">ACTIVE CAMPUS</span>
+        </div>
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <span className="muted">FACILITIES</span>
+          <span>ANATOMY LAB · LECTURE HALLS</span>
+        </div>
+        <Link to="/timetable" className="px-xs" style={{ marginTop: 4 }}>
+          VIEW MEDICAL TIMETABLE ▶
         </Link>
-      ))}
+      </div>
     </>
-  );
-}
-
-function Library() {
-  const now = useNow(30_000);
-  const { data } = useDeadlines();
-  const pending = (data ?? []).filter((d) => !d.done && d.dueAt > now).slice(0, 3);
-  return pending.length ? (
-    <>
-      <p className="muted">QUIET ZONE. YOUR NEXT BOSSES:</p>
-      {pending.map((d) => (
-        <Link key={d.id} to="/deadlines" className="line">
-          <span className="upper">{d.title}</span>
-          <span className="c-pink">{countdown(d.dueAt - now)}</span>
-        </Link>
-      ))}
-    </>
-  ) : (
-    <p className="muted">Nothing due. Rare. Enjoy the silence.</p>
-  );
-}
-
-function EventGround() {
-  const { data } = useEvents();
-  return data?.length ? (
-    <>
-      {data.slice(0, 3).map((e) => (
-        <Link key={e.id} to="/events" className="line">
-          <span className="upper">{e.title}</span>
-          <span>{fmtShortDate(e.startAt)} {fmtTime(e.startAt)}</span>
-        </Link>
-      ))}
-    </>
-  ) : (
-    <p className="muted">No events yet. <Link to="/events">See events</Link></p>
-  );
-}
-
-function Canteen() {
-  const { data } = useFriends();
-  const online = useLive((s) => s.online);
-  const friends = (data?.friends ?? []).filter((f) => online.has(f.id));
-  return friends.length ? (
-    <>
-      <p className="muted">FRIENDS ONLINE. GRAB CHAI?</p>
-      {friends.slice(0, 4).map((f) => (
-        <Link key={f.id} to={`/chat/${f.id}`} className="line">
-          <span className="upper">{f.name}</span>
-          <span className="c-cyan">DM ▶</span>
-        </Link>
-      ))}
-    </>
-  ) : (
-    <p className="muted">No friends online right now. <Link to="/people">Find people</Link></p>
   );
 }
 
@@ -230,12 +212,25 @@ function Cafe({ menu, seating, onSit }: { menu: NonNullable<(typeof MENUS)[ZoneI
 
 const GAME_KINDS: GameKind[] = ['ttt', 'c4', 'rps'];
 
-function GameZone({ players }: { players: WorldPlayer[] }) {
+function SportsPanel({ zoneId, players }: { zoneId: ZoneId; players: WorldPlayer[] }) {
+  const descriptions: Record<string, string> = {
+    football: 'Outdoor sports field. Goalposts and grass pitch ready for a match.',
+    basketball: 'Acrylic outdoor basketball court with hoops and key lines.',
+    cricket: 'Synthetic cricket turf with central batting pitch.',
+    tennis: 'Standard tennis court with center net markings.',
+    ground: 'Major campus open ground ringed by a running track.',
+  };
+
   return (
     <>
-      <p className="muted">Challenge anyone on campus. They get a popup to accept, then you play live.</p>
+      <p className="muted" style={{ marginBottom: 10 }}>
+        {descriptions[zoneId] ?? 'Campus sports area.'}
+      </p>
+      <p className="px-xs c-yellow" style={{ marginBottom: 6 }}>
+        CHALLENGE PLAYERS NEARBY
+      </p>
       {players.length ? (
-        players.slice(0, 6).map((p) => (
+        players.slice(0, 5).map((p) => (
           <div key={p.id} className="campus__challenger">
             <span className="upper truncate" style={{ color: p.color }}>
               {p.name}
@@ -250,8 +245,18 @@ function GameZone({ players }: { players: WorldPlayer[] }) {
           </div>
         ))
       ) : (
-        <p className="c-yellow">Nobody else is on campus right now. Open a second window as a guest to try it!</p>
+        <p className="dim">No other players nearby right now. Bring your squad here!</p>
       )}
+      <div style={{ marginTop: 10 }}>
+        <button
+          type="button"
+          className="line campus__order"
+          onClick={() => sayNearby(zoneId === 'football' ? 'goal! ⚽' : zoneId === 'basketball' ? 'swish! 🏀' : zoneId === 'cricket' ? 'sixer! 🏏' : 'match point! 🎾')}
+        >
+          <span className="upper">📢 Shout cheer</span>
+          <span className="c-cyan">SAY ▶</span>
+        </button>
+      </div>
     </>
   );
 }
@@ -266,6 +271,25 @@ function Hangout({ spot }: { spot: NonNullable<(typeof HANGOUTS)[ZoneId]> }) {
           <span className="c-cyan">SAY ▶</span>
         </button>
       ))}
+    </>
+  );
+}
+
+function GatePanel({ zoneId, label }: { zoneId: ZoneId; label: string }) {
+  const directions: Record<string, string> = {
+    maingate: 'Primary campus entrance on the north. Follow the road south toward Central Lawn, VIB on the west, and academic blocks to the east.',
+    gate3: 'North gate near BH1 and Football Ground. Provides quick access to the central hostel cluster and Mess.',
+    gate16: 'Eastern campus gate along the perimeter road beside the Girls Hostel (GH) and Large Ground.',
+  };
+  return (
+    <>
+      <p className="muted">{directions[zoneId] ?? 'Campus gate.'}</p>
+      <div style={{ marginTop: 10 }}>
+        <button type="button" className="line campus__order" onClick={() => sayNearby(`Arrived at ${label}! 👋`)}>
+          <span className="upper">📢 Announce arrival</span>
+          <span className="c-yellow">SAY ▶</span>
+        </button>
+      </div>
     </>
   );
 }

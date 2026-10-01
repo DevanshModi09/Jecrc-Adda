@@ -1,4 +1,4 @@
-import type { Facing } from '@adda/shared';
+import type { Facing, HairStyle } from '@adda/shared';
 import { H, hash, T, TILE, W, type CampusMap } from './map';
 
 // Pixel-art rendering with plain fillRects, in the Arcade palette.
@@ -39,6 +39,18 @@ const C = {
   fire: ['#ff8a3d', '#ffe04a'],
   stone: '#8a80b8',
   cup: '#f4f1ff',
+  // Sports & Campus Features
+  track: '#6b3020',
+  trackLine: '#94452f',
+  fieldLine: '#f4f1ff',
+  courtBlue: '#1e3a63',
+  courtTerracotta: '#8a3c26',
+  courtLine: '#f4f1ff',
+  turfGreen: '#1b5e39',
+  pitchClay: '#996e3d',
+  goalWhite: '#f4f1ff',
+  gatePillar: '#2c2058',
+  gateGold: '#ffe04a',
 };
 
 function tile(ctx: CanvasRenderingContext2D, t: T, x: number, y: number) {
@@ -137,7 +149,7 @@ function tile(ctx: CanvasRenderingContext2D, t: T, x: number, y: number) {
       r(0, 7, 16, 2, C.woodTop);
       for (let i = 0; i < 4; i++) r(i * 4, 0, 4, 5, C.awning[i % 2]!);
       r(0, 5, 16, 1, C.wallShade);
-      r(3 + (n % 3) * 3, 3, 3, 4, C.seat[n % 4]!); // something tasty on display
+      r(3 + (n % 3) * 3, 3, 3, 4, C.seat[n % 4]!);
       return;
     case T.Umbrella:
       deck();
@@ -170,41 +182,104 @@ function tile(ctx: CanvasRenderingContext2D, t: T, x: number, y: number) {
       return;
     case T.Shelf:
       r(0, 0, 16, 16, C.shelf);
-      for (let i = 0; i < 5; i++) r(1 + i * 3, 2, 2, 5, C.books[(n + i) % 4]!), r(1 + i * 3, 9, 2, 5, C.books[(n + i + 2) % 4]!);
+      for (let i = 0; i < 5; i++) {
+        r(1 + i * 3, 2, 2, 5, C.books[(n + i) % 4]!);
+        r(1 + i * 3, 9, 2, 5, C.books[(n + i + 2) % 4]!);
+      }
+      return;
+
+    // Sports surfaces
+    case T.Track:
+      r(0, 0, 16, 16, C.track);
+      r(0, 7, 16, 1, C.trackLine);
+      r(0, 15, 16, 1, C.trackLine);
+      return;
+
+    case T.FieldLine:
+      grass();
+      r(0, 7, 16, 2, C.fieldLine);
+      r(7, 0, 2, 16, C.fieldLine);
+      return;
+
+    case T.Court:
+      r(0, 0, 16, 16, C.courtBlue);
+      r(0, 0, 16, 1, '#294d7d');
+      r(0, 15, 16, 1, '#173055');
+      return;
+
+    case T.CourtLine:
+      r(0, 0, 16, 16, C.courtBlue);
+      r(0, 7, 16, 2, C.courtLine);
+      r(7, 0, 2, 16, C.courtLine);
+      return;
+
+    case T.Turf:
+      r(0, 0, 16, 16, C.turfGreen);
+      for (let i = 0; i < 2; i++) r((n * (i + 2)) % 14, (n * (i + 5)) % 14, 2, 1, '#257849');
+      return;
+
+    case T.Pitch:
+      r(0, 0, 16, 16, C.pitchClay);
+      r(0, 0, 16, 1, '#ab7c45');
+      r(0, 15, 16, 1, '#876033');
+      return;
+
+    case T.Goal:
+      grass();
+      r(2, 2, 12, 2, C.goalWhite);
+      r(2, 2, 2, 12, C.goalWhite);
+      r(12, 2, 2, 12, C.goalWhite);
+      return;
+
+    case T.Gate:
+      r(0, 0, 16, 16, C.path);
+      r(2, 2, 12, 12, C.gatePillar);
+      r(3, 1, 10, 2, C.gateGold);
+      r(4, 4, 8, 8, '#3ef2e0');
       return;
   }
 }
 
-/** Draws the static map once; the game loop just blits it. */
+/** Draws the static map once; the game loop blits it. */
 export function prerenderMap(map: CampusMap): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = W * TILE;
   canvas.height = H * TILE;
   const ctx = canvas.getContext('2d')!;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) tile(ctx, map.at(x, y), x, y);
 
-  // Building signs on the top wall.
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      tile(ctx, map.at(x, y), x, y);
+    }
+  }
+
+  // Building signs on the top wall
   ctx.font = '8px "Press Start 2P"';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   for (const b of map.buildings) {
     const cx = (b.x + b.w / 2) * TILE;
     const cy = b.y * TILE + 8;
-    const w = ctx.measureText(b.label).width + 10;
+    const w = ctx.measureText(b.label).width + 12;
     ctx.fillStyle = C.labelBg;
     ctx.fillRect(Math.round(cx - w / 2), cy - 6, Math.round(w), 12);
     ctx.fillStyle = C.label;
     ctx.fillText(b.label, cx, cy + 1);
   }
-  // Open-air labels.
-  ctx.fillStyle = C.label;
-  const outdoor = [
-    ['EVENT GROUND', 46, 27.5],
-    ['MAIN GATE', 28, 35.5],
-    ['FOOD STREET', 69, 0.5],
-    ['ADDA LAWN', 62, 15.5],
-    ['CHILL GARDEN', 62, 27.5],
-  ] as const;
+
+  // Outdoor landmark & gate labels
+  const outdoor: [string, number, number][] = [
+    ['MAIN GATE', 31, 2.5],
+    ['GATE NO. 3', 63, 2.5],
+    ['GATE NO. 16', 117, 34],
+    ['CENTRAL LAWN', 31, 10.5],
+    ['FOOTBALL GROUND', 51, 8.5],
+    ['BASKETBALL', 87, 8.5],
+    ['CRICKET TURF', 85, 21.5],
+    ['TENNIS COURT', 94, 25.5],
+    ['GROUND', 85, 47],
+  ];
+
   for (const [label, x, y] of outdoor) {
     const w = ctx.measureText(label).width + 10;
     ctx.fillStyle = C.labelBg;
@@ -212,6 +287,7 @@ export function prerenderMap(map: CampusMap): HTMLCanvasElement {
     ctx.fillStyle = C.label;
     ctx.fillText(label, x * TILE, y * TILE + 1);
   }
+
   return canvas;
 }
 
@@ -221,10 +297,6 @@ const LEGS = '#100a22';
 const UNIFORM_WHITE = '#f4f1ff';
 
 /** 12x16 pixel avatar anchored at the feet (world px). */
-/**
- * `staff` draws a café worker: `color` becomes the uniform, with a white cap and apron.
- * `carrying` is a dish (emoji) held up in front.
- */
 export function drawAvatar(
   ctx: CanvasRenderingContext2D,
   fx: number,
@@ -233,10 +305,15 @@ export function drawAvatar(
   dir: Facing,
   moving: boolean,
   t: number,
-  { sitting = false, staff = false, carrying }: { sitting?: boolean; staff?: boolean; carrying?: string } = {}
+  {
+    sitting = false,
+    staff = false,
+    carrying,
+    hairStyle = 'hair01',
+  }: { sitting?: boolean; staff?: boolean; carrying?: string; hairStyle?: HairStyle } = {}
 ) {
   const x = Math.round(fx - 6);
-  const y = Math.round(fy - 16) + (sitting ? 3 : 0); // sitting drops the body onto the seat
+  const y = Math.round(fy - 16) + (sitting ? 3 : 0);
   const r = (dx: number, dy: number, w: number, h: number, c: string) => {
     ctx.fillStyle = c;
     ctx.fillRect(x + dx, y + dy, w, h);
@@ -244,25 +321,39 @@ export function drawAvatar(
   const step = moving ? Math.floor(t / 140) % 2 : -1;
 
   if (sitting) {
-    // legs tucked forward instead of standing
     r(2, 12, 8, 1, LEGS);
-    if (dir !== 'up') r(3, 13, 2, 1, LEGS), r(7, 13, 2, 1, LEGS);
+    if (dir !== 'up') {
+      r(3, 13, 2, 1, LEGS);
+      r(7, 13, 2, 1, LEGS);
+    }
   } else {
     r(2, 15, 8, 1, 'rgba(0,0,0,0.35)'); // shadow
-    // legs
     r(3, 12, 2, step === 0 ? 3 : 4, LEGS);
     r(7, 12, 2, step === 1 ? 3 : 4, LEGS);
   }
+
   // body + arms
   r(2, 7, 8, 6, color);
   r(1, 8, 1, 4, SKIN);
   r(10, 8, 1, 4, SKIN);
+
   // head
   r(2, 0, 8, 7, SKIN);
   r(2, 0, 8, dir === 'up' ? 6 : 2, HAIR);
-  if (dir === 'left') r(2, 2, 2, 3, HAIR);
-  if (dir === 'right') r(8, 2, 2, 3, HAIR);
-  if (dir === 'down') r(4, 4, 1, 1, LEGS), r(7, 4, 1, 1, LEGS);
+
+  if (dir === 'left') r(8, 2, 2, 3, HAIR);
+  if (dir === 'right') r(2, 2, 2, 3, HAIR);
+  if (dir === 'down') {
+    r(4, 4, 1, 1, LEGS);
+    r(7, 4, 1, 1, LEGS);
+  }
+
+  if (hairStyle === 'hair02' && !staff) {
+    if (dir !== 'right') r(9, 1, 2, 8, HAIR);
+    if (dir !== 'left') r(1, 1, 2, 8, HAIR);
+    if (dir === 'up') r(2, 2, 8, 7, HAIR);
+  }
+
   if (dir === 'left') r(4, 4, 1, 1, LEGS);
   if (dir === 'right') r(7, 4, 1, 1, LEGS);
 
@@ -280,7 +371,14 @@ export function drawAvatar(
   }
 }
 
-export function drawLabel(ctx: CanvasRenderingContext2D, text: string, cx: number, top: number, fg: string, bg = 'rgba(16,10,34,0.85)') {
+export function drawLabel(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  cx: number,
+  top: number,
+  fg: string,
+  bg = 'rgba(16,10,34,0.85)'
+) {
   ctx.font = '8px VT323';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
@@ -291,8 +389,12 @@ export function drawLabel(ctx: CanvasRenderingContext2D, text: string, cx: numbe
   ctx.fillText(text, cx, top + 1);
 }
 
-/** Wrapped speech bubble, bottom edge at `bottom`. */
-export function drawBubble(ctx: CanvasRenderingContext2D, text: string, cx: number, bottom: number) {
+export function drawBubble(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  cx: number,
+  bottom: number
+) {
   ctx.font = '8px VT323';
   const words = text.split(' ');
   const lines: string[] = [];

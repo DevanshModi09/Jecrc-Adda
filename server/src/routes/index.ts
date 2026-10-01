@@ -38,6 +38,7 @@ export function apiRouter(): Router {
 
   api.get('/me', authController.me);
   api.patch('/me', authController.updateMe);
+  api.patch('/me/character', authController.updateCharacter);
 
   api.get('/deadlines', deadlinesController.list);
   api.post('/deadlines', deadlinesController.create);

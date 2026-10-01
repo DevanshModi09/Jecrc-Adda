@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import type { PublicUser } from '@adda/shared';
 import { api, ApiError } from '../../lib/api';
@@ -8,17 +8,45 @@ import './auth.css';
 
 type Mode = 'login' | 'register';
 
-export function AuthPage({ onAuthed }: { onAuthed: (u: PublicUser) => void }) {
+type AuthPageProps = {
+  onAuthStart: () => void;
+  onAuthFailure: () => void;
+  onAuthed: (user: PublicUser) => void;
+};
+
+export function AuthPage({ onAuthStart, onAuthFailure, onAuthed }: AuthPageProps) {
   const [mode, setMode] = useState<Mode>('login');
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const mountedRef = useRef(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  function beginAuthentication() {
+    if (busyRef.current) return false;
+    busyRef.current = true;
+    setBusy(true);
+    setError(null);
+    onAuthStart();
+    return true;
+  }
+
+  function finishAuthentication() {
+    busyRef.current = false;
+    if (mountedRef.current) setBusy(false);
+  }
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!beginAuthentication()) return;
     const f = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>;
-    setBusy(true);
-    setError(null);
     try {
       const user =
         mode === 'login'
@@ -33,26 +61,30 @@ export function AuthPage({ onAuthed }: { onAuthed: (u: PublicUser) => void }) {
               bio: f.bio ?? '',
               interests: f.interests ?? '',
             });
-      if (mode === 'register') navigate('/attendance/setup?welcome=1', { replace: true });
+      if (!mountedRef.current) return;
       onAuthed(user);
     } catch (err) {
+      if (!mountedRef.current) return;
       setError(err instanceof ApiError ? err : new ApiError(0, 'Something went wrong'));
+      onAuthFailure();
     } finally {
-      setBusy(false);
+      finishAuthentication();
     }
   }
 
   async function playAsGuest() {
-    setBusy(true);
-    setError(null);
+    if (!beginAuthentication()) return;
     try {
       const user = await api.auth.guest();
+      if (!mountedRef.current) return;
       navigate('/', { replace: true });
       onAuthed(user);
     } catch (err) {
+      if (!mountedRef.current) return;
       setError(err instanceof ApiError ? err : new ApiError(0, 'Something went wrong'));
+      onAuthFailure();
     } finally {
-      setBusy(false);
+      finishAuthentication();
     }
   }
 
@@ -78,10 +110,10 @@ export function AuthPage({ onAuthed }: { onAuthed: (u: PublicUser) => void }) {
 
       <section className="panel panel--pink auth__card">
         <div className="tabs" role="group" aria-label="Log in or sign up">
-          <button type="button" className="tab" aria-pressed={mode === 'login'} onClick={() => { setMode('login'); setError(null); }}>
+          <button type="button" className="tab" aria-pressed={mode === 'login'} disabled={busy} onClick={() => { setMode('login'); setError(null); }}>
             CONTINUE
           </button>
-          <button type="button" className="tab" aria-pressed={mode === 'register'} onClick={() => { setMode('register'); setError(null); }}>
+          <button type="button" className="tab" aria-pressed={mode === 'register'} disabled={busy} onClick={() => { setMode('register'); setError(null); }}>
             NEW PLAYER
           </button>
         </div>

@@ -26,6 +26,9 @@ model User {
   bio          String   @default("")
   interests    String[] @default([])
   color        String
+  shirtColor   String?  @map("shirt_color")
+  hairStyle    String   @default("hair01") @map("hair_style")
+  characterSetupComplete Boolean @default(true) @map("character_setup_complete")
   passwordHash String   @map("password_hash")
   isGuest      Boolean  @default(false) @map("is_guest")
   createdAt    BigInt   @map("created_at")

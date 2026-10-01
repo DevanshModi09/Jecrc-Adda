@@ -1,45 +1,14 @@
 import { useDeferredValue, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link } from 'react-router';
 import type { Person, PublicUser } from '@adda/shared';
-import { useFriendAction, useFriends, usePeople } from '../../hooks/queries';
+import { useFriendAction, usePeople } from '../../hooks/queries';
 import { BRANCHES, YEARS } from '../../lib/constants';
 import { useLive } from '../../stores/live';
-import { Avatar, Empty, Loading, PageHead } from '../../components/ui';
+import { Avatar, Empty, Loading } from '../../components/ui';
 import { FriendButton } from '../../components/FriendButton';
 import './people.css';
 
-type Tab = 'find' | 'friends' | 'requests';
-
-export function PeoplePage() {
-  const [params, setParams] = useSearchParams();
-  const tab = (params.get('tab') as Tab) || 'find';
-  const { data: overview } = useFriends();
-  const setTab = (t: Tab) => setParams(t === 'find' ? {} : { tab: t }, { replace: true });
-
-  return (
-    <>
-      <PageHead title="PEOPLE" sub="Find your people, add them as friends, then DM. Only friends can message each other." />
-
-      <div className="tabs" role="group" aria-label="People">
-        <button type="button" className="tab" aria-pressed={tab === 'find'} onClick={() => setTab('find')}>
-          FIND PLAYERS
-        </button>
-        <button type="button" className="tab" aria-pressed={tab === 'friends'} onClick={() => setTab('friends')}>
-          FRIENDS{overview?.friends.length ? <span className="tab__count">{overview.friends.length}</span> : null}
-        </button>
-        <button type="button" className="tab" aria-pressed={tab === 'requests'} onClick={() => setTab('requests')}>
-          REQUESTS{overview?.incoming.length ? <span className="tab__count c-pink">{overview.incoming.length}</span> : null}
-        </button>
-      </div>
-
-      {tab === 'find' && <FindPlayers />}
-      {tab === 'friends' && <FriendsList friends={overview?.friends} />}
-      {tab === 'requests' && <Requests incoming={overview?.incoming} outgoing={overview?.outgoing} />}
-    </>
-  );
-}
-
-function FindPlayers() {
+export function FindPlayers() {
   const [q, setQ] = useState('');
   const [branch, setBranch] = useState('');
   const [year, setYear] = useState('');
@@ -120,7 +89,7 @@ function PersonCard({ u, onInterest }: { u: Person; onInterest?: (i: string) => 
   );
 }
 
-function FriendsList({ friends }: { friends?: PublicUser[] }) {
+export function FriendsList({ friends }: { friends?: PublicUser[] }) {
   const online = useLive((s) => s.online);
   const remove = useFriendAction();
   if (!friends) return <Loading />;
@@ -156,7 +125,7 @@ function FriendsList({ friends }: { friends?: PublicUser[] }) {
   );
 }
 
-function Requests({ incoming, outgoing }: { incoming?: PublicUser[]; outgoing?: PublicUser[] }) {
+export function Requests({ incoming, outgoing }: { incoming?: PublicUser[]; outgoing?: PublicUser[] }) {
   if (!incoming || !outgoing) return <Loading />;
   return (
     <div className="grid-2">

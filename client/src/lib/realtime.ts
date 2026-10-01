@@ -141,7 +141,7 @@ class RealtimeClient {
       case 'friends:changed': {
         for (const key of [keys.friends, ['people'], ['person']]) queryClient.invalidateQueries({ queryKey: key });
         const who = msg.from.name.toUpperCase();
-        if (msg.kind === 'request') toast(`${who} SENT YOU A FRIEND REQUEST`, { href: '/people?tab=requests' });
+        if (msg.kind === 'request') toast(`${who} SENT YOU A FRIEND REQUEST`, { href: '/players?tab=requests' });
         if (msg.kind === 'accepted') toast(`${who} ACCEPTED. YOU CAN DM NOW`, { kind: 'good', href: `/chat/${msg.from.id}` });
         break;
       }

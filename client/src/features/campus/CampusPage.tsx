@@ -54,6 +54,7 @@ interface ChatLine {
 }
 
 export function CampusPage({ me }: { me: PublicUser }) {
+  const campusRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const miniRef = useRef<HTMLCanvasElement>(null);
   const chatRef = useRef<HTMLInputElement>(null);
@@ -67,6 +68,8 @@ export function CampusPage({ me }: { me: PublicUser }) {
   const [log, setLog] = useState<ChatLine[]>([]);
   const [chatOpen, setChatOpen] = useState(readChatPref);
   const [unseen, setUnseen] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenError, setFullscreenError] = useState('');
   const chatOpenRef = useRef(chatOpen);
   chatOpenRef.current = chatOpen;
   const focusChat = useRef(false);
@@ -123,6 +126,40 @@ export function CampusPage({ me }: { me: PublicUser }) {
     };
   }, [map, me.id]);
 
+  useEffect(() => {
+    const campus = campusRef.current;
+    if (!campus) return;
+
+    let resizeFrame = 0;
+    const syncFullscreen = () => {
+      setIsFullscreen(document.fullscreenElement === campus);
+      cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(() => engineRef.current?.resize());
+    };
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => engineRef.current?.resize());
+    observer?.observe(campus);
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    syncFullscreen();
+
+    return () => {
+      observer?.disconnect();
+      document.removeEventListener('fullscreenchange', syncFullscreen);
+      cancelAnimationFrame(resizeFrame);
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    const campus = campusRef.current;
+    if (!campus) return;
+    setFullscreenError('');
+    try {
+      if (document.fullscreenElement === campus) await document.exitFullscreen();
+      else await campus.requestFullscreen();
+    } catch {
+      setFullscreenError('FULLSCREEN UNAVAILABLE. TRY AGAIN.');
+    }
+  };
+
   // Keyboard: movement unless typing; Enter jumps to chat, Esc leaves it.
   useEffect(() => {
     const typing = () => document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement;
@@ -131,6 +168,8 @@ export function CampusPage({ me }: { me: PublicUser }) {
         if (e.key === 'Escape') (document.activeElement as HTMLElement).blur();
         return;
       }
+      // Let navigation and other focused controls keep their native keyboard actions.
+      if (e.target instanceof Element && e.target.closest('a, button, select, [contenteditable="true"]')) return;
       if (e.key === 'Enter') {
         e.preventDefault();
         openChat(true);
@@ -199,7 +238,7 @@ export function CampusPage({ me }: { me: PublicUser }) {
   });
 
   return (
-    <div className="campus">
+    <div className="campus" ref={campusRef}>
       <canvas
         ref={canvasRef}
         className="campus__canvas"
@@ -221,6 +260,16 @@ export function CampusPage({ me }: { me: PublicUser }) {
       </div>
 
       <aside className="campus__players" aria-label="Players on campus">
+        <button
+          type="button"
+          className="campus__fullscreen"
+          aria-label={isFullscreen ? 'Exit Campus fullscreen' : 'Enter Campus fullscreen'}
+          title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          onClick={toggleFullscreen}
+        >
+          {isFullscreen ? 'EXIT FULL' : '⛶ FULL'}
+        </button>
+        {fullscreenError && <p className="campus__fullscreen-error" role="alert">{fullscreenError}</p>}
         <canvas
           ref={miniRef}
           className="campus__mini"
@@ -325,7 +374,7 @@ function PlayerCard({ id, onChallenge }: { id: string; onChallenge: () => void }
           </button>
         ))}
       </div>
-      <Link to="/people" className="px-xs">SEE ALL PLAYERS</Link>
+      <Link to="/players?tab=find" className="px-xs">SEE ALL PLAYERS</Link>
     </div>
   );
 }
