@@ -1,0 +1,100 @@
+.campus-loading-app {
+  display: contents;
+}
+
+body:has(.campus-loading) {
+  overflow: hidden;
+}
+
+.campus-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg);
+  text-align: center;
+  touch-action: none;
+  animation: campus-loading-enter 160ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.campus-loading--leaving {
+  animation: campus-loading-leave 260ms cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+.campus-loading__content {
+  width: 100%;
+  max-width: 520px;
+}
+
+.campus-loading__logo {
+  margin-bottom: 14px;
+}
+
+.campus-loading__status {
+  margin-top: 42px;
+  color: var(--ink);
+}
+
+.campus-loading__meter {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 24px;
+}
+
+.campus-loading__meter span {
+  width: 10px;
+  height: 10px;
+  background: var(--dim);
+  box-shadow: 2px 2px 0 var(--bg-deep);
+  animation: campus-loading-segment 1050ms steps(1, end) infinite;
+}
+
+.campus-loading__meter span:nth-child(2) { animation-delay: 150ms; }
+.campus-loading__meter span:nth-child(3) { animation-delay: 300ms; }
+.campus-loading__meter span:nth-child(4) { animation-delay: 450ms; }
+.campus-loading__meter span:nth-child(5) { animation-delay: 600ms; }
+.campus-loading__meter span:nth-child(6) { animation-delay: 750ms; }
+.campus-loading__meter span:nth-child(7) { animation-delay: 900ms; }
+
+@keyframes campus-loading-enter {
+  from { opacity: 0; transform: translateY(4px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes campus-loading-leave {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes campus-loading-segment {
+  0%, 28% { background: var(--cyan); }
+  29%, 100% { background: var(--dim); }
+}
+
+@media (max-width: 860px) {
+  .campus-loading__status {
+    margin-top: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .campus-loading,
+  .campus-loading--leaving {
+    animation-duration: 1ms;
+    animation-delay: 0ms;
+  }
+
+  .campus-loading__meter span {
+    animation: none;
+  }
+
+  .campus-loading__meter span:nth-child(-n + 4) {
+    background: var(--cyan);
+  }
+}

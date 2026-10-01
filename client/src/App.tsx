@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router';
 import type { PublicUser } from '@adda/shared';
 import { useMe } from './hooks/queries';
@@ -7,6 +7,7 @@ import { keys, queryClient } from './lib/queryClient';
 import { realtime } from './lib/realtime';
 import { Layout } from './components/Layout';
 import { Loading } from './components/ui';
+import { CampusLoadingTransition, type CampusLoadingPhase } from './components/CampusLoadingTransition';
 import { AuthPage } from './features/auth/AuthPage';
 import { HomePage } from './features/home/HomePage';
 import { DeadlinesPage } from './features/deadlines/DeadlinesPage';
@@ -28,25 +29,57 @@ function LegacyRoomRedirect() {
   return <Navigate to={`/desks/${roomId}`} replace />;
 }
 
+const MIN_AUTH_LOADING_MS = 400;
+
 export function App() {
   const { data: user, isPending } = useMe();
   const navigate = useNavigate();
+  const [transition, setTransition] = useState<{ phase: CampusLoadingPhase; startedAt: number }>({
+    phase: 'hidden', startedAt: 0,
+  });
+
+  const beginAuth = useCallback(() => {
+    setTransition({ phase: 'pending', startedAt: performance.now() });
+  }, []);
+
+  const failAuth = useCallback(() => {
+    setTransition((current) => ({ ...current, phase: 'hidden' }));
+  }, []);
+
+  const finishExit = useCallback(() => {
+    setTransition((current) => current.phase === 'exiting' ? { ...current, phase: 'hidden' } : current);
+  }, []);
+
+  const onAuthed = useCallback((u: PublicUser) => {
+    // Logging in always lands on home, whatever page you were on when you left.
+    navigate('/', { replace: true });
+    queryClient.setQueryData(keys.me, u);
+  }, [navigate]);
+
+  useEffect(() => {
+    // This effect runs after the authenticated routes have committed. It survives
+    // AuthPage unmounting and does not depend on its request continuation.
+    if (transition.phase !== 'pending' || !user || isPending) return;
+    const remaining = Math.max(0, MIN_AUTH_LOADING_MS - (performance.now() - transition.startedAt));
+    const timer = window.setTimeout(() => {
+      setTransition((current) => current === transition ? { ...current, phase: 'exiting' } : current);
+    }, remaining);
+    return () => window.clearTimeout(timer);
+  }, [user, isPending, transition]);
+
+  useEffect(() => {
+    if (transition.phase !== 'exiting') return;
+    // Auth has succeeded and the destination has committed. Always unblock it
+    // even if CSS animations are disabled or animationend never fires.
+    const timer = window.setTimeout(finishExit, 400);
+    return () => window.clearTimeout(timer);
+  }, [transition.phase, finishExit]);
 
   useEffect(() => {
     if (!user) return;
     realtime.connect(user.id);
     return () => realtime.disconnect();
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (isPending) return <Loading label="INSERT COIN" />;
-  if (!user) {
-    // Logging in always lands on home, whatever page you were on when you left.
-    const onAuthed = (u: PublicUser) => {
-      navigate('/', { replace: true });
-      queryClient.setQueryData(keys.me, u);
-    };
-    return <AuthPage onAuthed={onAuthed} />;
-  }
 
   const logout = async () => {
     await api.auth.logout().catch(() => {});
@@ -56,7 +89,14 @@ export function App() {
     navigate('/', { replace: true });
   };
 
-  return (
+  let content: ReactNode;
+
+  if (isPending) {
+    content = <Loading label="INSERT COIN" />;
+  } else if (!user) {
+    content = <AuthPage onAuthStart={beginAuth} onAuthFailure={failAuth} onAuthed={onAuthed} />;
+  } else {
+    content = (
     <Routes>
       <Route element={<Layout user={user} onLogout={logout} />}>
         <Route index element={<HomePage user={user} />} />
@@ -80,5 +120,8 @@ export function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
-  );
+    );
+  }
+
+  return <CampusLoadingTransition phase={transition.phase} onExited={finishExit}>{content}</CampusLoadingTransition>;
 }
