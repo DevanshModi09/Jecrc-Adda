@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+server/src/generated/
+
+# env files
+.env*
+!.env.example
+
+# local database files
+server/data/
+*.db
+*.db-wal
+*.db-shm
+
+# logs
+*.log
+npm-debug.log*
+
+# deployment CLIs
+.vercel/
+.neon/
+
+# os / editor
+.DS_Store
+.idea/
