@@ -54,6 +54,21 @@ Campus is a canvas scene built from rectangle primitives and a prerendered map. 
 
 The Campus panel's small fullscreen control expands only the `.campus` game wrapper, including its canvas, minimap and overlays. The browser Fullscreen API and `fullscreenchange` keep its enter/exit label in sync (including Escape); container resize recalculates the canvas while retaining pixelated rendering and a dark backdrop.
 
+### Campus Map & JECRC Layout Rules
+
+- **Topology & Truth:** The campus map layout directly represents the JECRC University campus topology from the reference layout, replacing earlier fictional arrangements with real spatial relationships (VIB on the west, Central Lawn ring, Football Ground, NYB, BH1, Mess, Basketball, BH2, Cricket Turf, Tennis Court, GH, JMCH in the south-west, Large Ground in the south-east, BH3 in the far south, and North/East gates).
+- **Pixel-Art Continuity:** The map strictly uses the existing College Adda pixel-art language, Arcade color tokens, 16×16 tile dimensions, and nearest-neighbor rendering. No Google Maps, 3D, vector, or isometric graphics are introduced.
+- **Centralized Geometry:** World dimensions (`120×80` tiles in `WORLD_SIZE`), building footprints (`BUILDINGS`), road segments (`ROAD_SEGMENTS`), and zone boundaries (`MAP_ZONES`) are centralized and data-driven in `client/src/features/campus/map.ts`. Coordinates must not be scattered across multiple rendering files.
+- **Road & Connectivity Principle:** Roadways are 2–3 tiles wide, fully walkable paths that physically connect all campus locations into one navigable network. Buildings have designated doorways opening directly onto adjacent roads.
+- **Visual Families:**
+  - *Academic Blocks (VIB, NYB):* Classrooms, lecture hall desks, computer stations.
+  - *Institutional Block (JMCH):* Expansive medical college halls, laboratories, central reception.
+  - *Hostel Family (BH1, BH2, BH3, GH):* Shared hostel architecture, student rooms, study spaces, common-room hangouts.
+  - *Dining (MESS):* Food counter with live staff/waiter service and dining tables.
+  - *Sports Grounds:* Clear surface textures (grass football field, acrylic basketball court, synthetic cricket turf with clay pitch, tennis court, and large ground with perimeter running track).
+  - *Landscaped Green Space (Central Lawn):* Lush flora, fountain, stone footpaths, and relaxation benches.
+- **Minimap Correspondence:** The minimap renders the prerendered campus canvas with an exact matching aspect ratio (`120 / 80`), displaying live player positions and the dynamic camera viewport frame.
+
 ## 9. Animation & Motion
 
 EntryIntro is a fixed branded overlay at z-index 1000: short logo/tagline arrivals, then an upward exit, with a timeout fallback and inert background. Reduced motion uses a short opacity exit. CampusLoadingTransition is a separate fixed overlay at 900 with a stepped segmented meter, pending/exiting states, inert content and animation/timeout exit handling in App. Reduced motion makes transitions near-instant and the meter static. Academics opens directly with a flipped caret; no reveal animation. Buttons use a pressed translation. Blink/glow and Home's glow have reduced-motion overrides. New editor controls need no animation loop.
