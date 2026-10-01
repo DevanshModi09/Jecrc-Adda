@@ -89,7 +89,7 @@ export function AttendanceSetupPage({ me }: { me: PublicUser }) {
       ) : !overview?.subjects.length ? (
         <div className="panel">
           <Empty title="NO TIMETABLE FOR YOUR SECTION">
-            {me.branch ? sectionLabel(sectionKeyOf(me)) : 'Your section'} has no timetable yet. <Link to="/profile">Check your section</Link>
+            {me.branch ? sectionLabel(sectionKeyOf(me)) : 'Your section'} has no timetable yet. <Link to="/players">Check your section</Link>
           </Empty>
         </div>
       ) : (

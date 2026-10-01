@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router';
+import { Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router';
 import type { PublicUser } from '@adda/shared';
 import { useMe } from './hooks/queries';
 import { api } from './lib/api';
@@ -14,10 +14,9 @@ import { DeadlinesPage } from './features/deadlines/DeadlinesPage';
 import { TimetablePage } from './features/timetable/TimetablePage';
 import { RoomsPage } from './features/rooms/RoomsPage';
 import { RoomPage } from './features/rooms/RoomPage';
-import { PeoplePage } from './features/people/PeoplePage';
+import { PlayersPage } from './features/people/PlayersPage';
 import { ChatPage } from './features/chat/ChatPage';
 import { EventsPage } from './features/events/EventsPage';
-import { ProfilePage } from './features/profile/ProfilePage';
 import { CampusPage } from './features/campus/CampusPage';
 import { AttendancePage } from './features/attendance/AttendancePage';
 import { AttendanceSetupPage } from './features/attendance/AttendanceSetupPage';
@@ -28,6 +27,12 @@ import { CharacterPage } from './features/character/CharacterPage';
 function LegacyRoomRedirect() {
   const { roomId } = useParams();
   return <Navigate to={`/desks/${roomId}`} replace />;
+}
+
+function LegacyPeopleRedirect() {
+  const [params] = useSearchParams();
+  const tab = params.get('tab');
+  return <Navigate to={`/players?tab=${tab === 'friends' || tab === 'requests' ? tab : 'find'}`} replace />;
 }
 
 const MIN_AUTH_LOADING_MS = 400;
@@ -99,7 +104,7 @@ export function App() {
   } else if (user.characterSetupComplete === false) {
     content = (
       <Routes>
-        <Route path="/character/setup" element={<main className="main character-onboarding"><CharacterPage user={user} onboarding onLogout={logout} /></main>} />
+        <Route path="/character/setup" element={<main className="main character-onboarding"><CharacterPage user={user} onLogout={logout} /></main>} />
         <Route path="*" element={<Navigate to="/character/setup" replace />} />
       </Routes>
     );
@@ -120,12 +125,13 @@ export function App() {
         {/* old links */}
         <Route path="rooms" element={<Navigate to="/desks" replace />} />
         <Route path="rooms/:roomId" element={<LegacyRoomRedirect />} />
-        <Route path="people" element={<PeoplePage />} />
+        <Route path="players" element={<PlayersPage user={user} />} />
+        <Route path="people" element={<LegacyPeopleRedirect />} />
         <Route path="chat" element={<ChatPage me={user} />} />
         <Route path="chat/:userId" element={<ChatPage me={user} />} />
         <Route path="events" element={<EventsPage me={user} />} />
-        <Route path="profile" element={<ProfilePage user={user} />} />
-        <Route path="character" element={<CharacterPage user={user} />} />
+        <Route path="profile" element={<Navigate to="/players" replace />} />
+        <Route path="character" element={<Navigate to="/players" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

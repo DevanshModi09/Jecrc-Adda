@@ -183,7 +183,7 @@ function Canteen() {
       ))}
     </>
   ) : (
-    <p className="muted">No friends online right now. <Link to="/people">Find people</Link></p>
+    <p className="muted">No friends online right now. <Link to="/players?tab=find">Find people</Link></p>
   );
 }
 

@@ -19,18 +19,18 @@ export function PixelAvatar({ color, hairStyle }: { color: string; hairStyle: Ha
   return <canvas ref={ref} width={24} height={24} className="character__avatar" role="img" aria-label={`Character preview, ${hairStyle === 'hair01' ? 'Hair 01' : 'Hair 02'}`} />;
 }
 
-export function CharacterPage({ user, onboarding = false, onLogout }: { user: PublicUser; onboarding?: boolean; onLogout?: () => void }) {
+export function CharacterPage({ user, onLogout }: { user: PublicUser; onLogout: () => void }) {
   return (
     <div className="character">
-      <PageHead title={onboarding ? 'CREATE YOUR CHARACTER' : 'CHARACTER'} sub="Pick your hair and T-shirt. Make yourself at home on campus.">
-        {onboarding && <button type="button" className="btn btn--ghost btn--sm" onClick={onLogout}>QUIT</button>}
+      <PageHead title="CREATE YOUR CHARACTER" sub="Pick your hair and T-shirt. Make yourself at home on campus.">
+        <button type="button" className="btn btn--ghost btn--sm" onClick={onLogout}>QUIT</button>
       </PageHead>
-      <CharacterEditor key={user.id} user={user} onboarding={onboarding} />
+      <CharacterEditor key={user.id} user={user} onboarding />
     </div>
   );
 }
 
-function CharacterEditor({ user, onboarding }: { user: PublicUser; onboarding: boolean }) {
+export function CharacterEditor({ user, onboarding = false }: { user: PublicUser; onboarding?: boolean }) {
   const [shirtColor, setShirtColor] = useState<ShirtColor | null>(user.shirtColor ?? null);
   const [hairStyle, setHairStyle] = useState<HairStyle>(user.hairStyle ?? 'hair01');
   const [busy, setBusy] = useState(false);
@@ -51,7 +51,12 @@ function CharacterEditor({ user, onboarding }: { user: PublicUser; onboarding: b
       const next = await api.auth.updateCharacter({ shirtColor, hairStyle });
       // Set destination before completing the guard, so setup never flashes a dashboard.
       if (onboarding) navigate('/', { replace: true });
-      queryClient.setQueryData(keys.me, next);
+      queryClient.setQueryData<PublicUser>(keys.me, (current) => current ? {
+        ...current,
+        shirtColor: next.shirtColor,
+        hairStyle: next.hairStyle,
+        characterSetupComplete: next.characterSetupComplete,
+      } : next);
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save your character. Try again.');
@@ -62,8 +67,8 @@ function CharacterEditor({ user, onboarding }: { user: PublicUser; onboarding: b
   }
 
   return (
-    <Panel title="PLAYER PREVIEW" tone="cyan">
-      <form className="character__editor" onSubmit={save} aria-busy={busy}>
+    <Panel title={onboarding ? 'PLAYER PREVIEW' : 'CHARACTER'} tone="cyan">
+      <form className={`character__editor${onboarding ? '' : ' character__editor--embedded'}`} onSubmit={save} aria-busy={busy}>
         <div className="character__preview">
           <p className="px-xs c-yellow">YOU</p>
           <PixelAvatar color={color} hairStyle={hairStyle} />

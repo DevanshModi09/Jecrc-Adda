@@ -11,9 +11,8 @@ import { GameModal } from './GameModal';
 const PRIMARY_LINKS = [
   { to: '/campus', label: 'CAMPUS' },
   { to: '/feed', label: 'FEED' },
-  { to: '/people', label: 'PEOPLE' },
   { to: '/events', label: 'EVENTS' },
-  { to: '/character', label: 'CHARACTER' },
+  { to: '/players', label: 'PLAYERS' },
 ];
 
 const ACADEMIC_LINKS = [
@@ -50,7 +49,7 @@ export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => v
           {PRIMARY_LINKS.slice(2).map((l) => (
             <NavLink key={l.to} to={l.to}>
               {l.label}
-              {l.to === '/people' && requests > 0 && (
+              {l.to === '/players' && requests > 0 && (
                 <span className="nav__badge" aria-label={`${requests} friend requests`}>
                   {requests}
                 </span>
@@ -59,7 +58,7 @@ export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => v
           ))}
         </nav>
         <div className="topbar__player">
-          <Link to="/profile" title="Edit profile">
+          <Link to="/players" title="My player">
             P1 {user.name.split(' ')[0]?.toUpperCase()} · {user.section ? `SEC ${user.section}` : ''} · LV {levelOf(deadlines)}
             {user.role === 'admin' && <span className="c-yellow"> · ADMIN</span>}
           </Link>

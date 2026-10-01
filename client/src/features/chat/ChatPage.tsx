@@ -25,7 +25,7 @@ export function ChatPage({ me }: { me: PublicUser }) {
       <aside className="panel chat__list" aria-label="Conversations">
         <div className="panel__head">
           <h2 className="panel__title">CHATS</h2>
-          <Link to="/people">+ NEW</Link>
+          <Link to="/players?tab=find">+ NEW</Link>
         </div>
         {isPending ? (
           <Loading />

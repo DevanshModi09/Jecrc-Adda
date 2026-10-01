@@ -327,7 +327,7 @@ function PlayerCard({ id, onChallenge }: { id: string; onChallenge: () => void }
           </button>
         ))}
       </div>
-      <Link to="/people" className="px-xs">SEE ALL PLAYERS</Link>
+      <Link to="/players?tab=find" className="px-xs">SEE ALL PLAYERS</Link>
     </div>
   );
 }
