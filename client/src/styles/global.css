@@ -137,12 +137,14 @@ textarea {
   flex-direction: column;
 }
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
   align-items: center;
   gap: 28px;
   padding: 22px 40px 18px;
 }
 .topbar__logo {
+  justify-self: start;
   font-family: var(--px);
   font-size: 22px;
   color: var(--pink);
@@ -165,6 +167,7 @@ textarea {
 }
 .nav {
   display: flex;
+  justify-self: center;
   gap: 16px;
   font-size: 22px;
   align-items: center;
@@ -264,7 +267,7 @@ textarea {
   vertical-align: 3px;
 }
 .topbar__player {
-  margin-left: auto;
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -822,8 +825,12 @@ a.line:hover {
 /* Narrow screens: the nav gets its own row under the logo instead of scrolling out of view. */
 @media (max-width: 1400px) {
   .topbar {
+    display: flex;
     flex-wrap: wrap;
     row-gap: 10px;
+  }
+  .topbar__player {
+    margin-left: auto;
   }
   .nav {
     order: 3;

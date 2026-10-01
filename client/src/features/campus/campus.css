@@ -11,6 +11,17 @@
   -webkit-user-select: none;
   touch-action: none;
 }
+.campus:fullscreen {
+  width: 100vw;
+  height: 100dvh;
+  min-height: 0;
+  border: 0;
+  box-shadow: none;
+  background: var(--bg-deep);
+}
+.campus::backdrop {
+  background: var(--bg-deep);
+}
 .campus__canvas {
   display: block;
   width: 100%;
@@ -42,6 +53,26 @@
   padding: 8px 10px;
   background: rgba(16, 10, 34, 0.85);
   border: 3px solid var(--frame);
+}
+.campus__fullscreen {
+  display: block;
+  min-height: 32px;
+  margin: 0 0 8px auto;
+  padding: 5px 8px;
+  border: 2px solid var(--cyan);
+  background: var(--panel-2);
+  color: var(--cyan);
+  font: 8px/1.4 var(--px);
+  cursor: pointer;
+}
+.campus__fullscreen:hover {
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
+.campus__fullscreen-error {
+  margin-bottom: 8px;
+  color: var(--pink);
+  font: 8px/1.5 var(--px);
 }
 .campus__roster ul {
   max-height: 22vh; /* the list scrolls; the minimap stays put */

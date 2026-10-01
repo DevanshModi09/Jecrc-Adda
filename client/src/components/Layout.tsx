@@ -9,6 +9,7 @@ import { Toaster } from './Toaster';
 import { GameModal } from './GameModal';
 
 const PRIMARY_LINKS = [
+  { to: '/', label: 'DASHBOARD' },
   { to: '/campus', label: 'CAMPUS' },
   { to: '/feed', label: 'FEED' },
   { to: '/events', label: 'EVENTS' },
@@ -40,13 +41,13 @@ export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => v
           ADDA
         </Link>
         <nav className="nav" aria-label="Main">
-          {PRIMARY_LINKS.slice(0, 2).map((l) => (
+          {PRIMARY_LINKS.slice(0, 3).map((l) => (
             <NavLink key={l.to} to={l.to} className={l.to === '/campus' ? 'nav__glow' : undefined}>
               {l.label}
             </NavLink>
           ))}
           <AcademicsMenu pathname={location.pathname} />
-          {PRIMARY_LINKS.slice(2).map((l) => (
+          {PRIMARY_LINKS.slice(3).map((l) => (
             <NavLink key={l.to} to={l.to}>
               {l.label}
               {l.to === '/players' && requests > 0 && (
