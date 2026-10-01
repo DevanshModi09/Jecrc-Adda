@@ -260,17 +260,20 @@ export function drawAvatar(
   // head
   r(2, 0, 8, 7, SKIN);
   r(2, 0, 8, dir === 'up' ? 6 : 2, HAIR);
-  if (dir === 'left') r(2, 2, 2, 3, HAIR);
-  if (dir === 'right') r(8, 2, 2, 3, HAIR);
+  // Side hair belongs behind the face, opposite the direction of travel.
+  if (dir === 'left') r(8, 2, 2, 3, HAIR);
+  if (dir === 'right') r(2, 2, 2, 3, HAIR);
   if (dir === 'down') r(4, 4, 1, 1, LEGS), r(7, 4, 1, 1, LEGS);
-  if (dir === 'left') r(4, 4, 1, 1, LEGS);
-  if (dir === 'right') r(7, 4, 1, 1, LEGS);
 
   if (hairStyle === 'hair02' && !staff) {
-    r(1, 1, 2, 8, HAIR);
-    r(9, 1, 2, 8, HAIR);
+    if (dir !== 'right') r(9, 1, 2, 8, HAIR);
+    if (dir !== 'left') r(1, 1, 2, 8, HAIR);
     if (dir === 'up') r(2, 2, 8, 7, HAIR);
   }
+
+  // A single pixel on the leading side keeps both profiles readable.
+  if (dir === 'left') r(4, 4, 1, 1, LEGS);
+  if (dir === 'right') r(7, 4, 1, 1, LEGS);
 
   if (staff) {
     r(1, -2, 10, 3, UNIFORM_WHITE); // cap
