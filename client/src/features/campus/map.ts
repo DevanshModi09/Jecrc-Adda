@@ -1,10 +1,9 @@
 import { WORLD_SIZE } from '@adda/shared';
 
-// A stylised JECRC campus, built in code (no image assets). Tile units throughout.
-// Inspired by the real campus layout, not a survey of it.
-
-export const W = WORLD_SIZE.w;
-export const H = WORLD_SIZE.h;
+// JECRC University Campus Map, built with pixel-art arcade geometry.
+// Source of truth: top-down campus layout topology.
+export const W = WORLD_SIZE.w; // 120
+export const H = WORLD_SIZE.h; // 80
 export const TILE = 16; // source pixels per tile
 
 export const T = {
@@ -21,36 +20,64 @@ export const T = {
   Stage: 10,
   Flower: 11,
   Pc: 12,
-  // Food street + hangouts
-  Deck: 13, // outdoor wooden deck, walkable
-  Seat: 14, // indoor stool, walkable: stop on it to sit
-  Table: 15, // small café table
-  Stall: 16, // food stall with an awning
-  Umbrella: 17, // outdoor table under an umbrella
-  Beanbag: 18, // outdoor bean bag, walkable: stop on it to sit
-  Fire: 19, // bonfire
-  Game: 20, // carrom / foosball table
+  Deck: 13,
+  Seat: 14,
+  Table: 15,
+  Stall: 16,
+  Umbrella: 17,
+  Beanbag: 18,
+  Fire: 19,
+  Game: 20,
+  // Sports & Campus Terrain
+  Track: 21,
+  FieldLine: 22,
+  Court: 23,
+  CourtLine: 24,
+  Turf: 25,
+  Pitch: 26,
+  Goal: 27,
+  Gate: 28,
 } as const;
 export type T = (typeof T)[keyof typeof T];
 
-const BLOCKING = new Set<T>([T.Wall, T.Tree, T.Water, T.Bench, T.Desk, T.Shelf, T.Counter, T.Pc, T.Table, T.Stall, T.Umbrella, T.Fire, T.Game]);
+const BLOCKING = new Set<T>([
+  T.Wall,
+  T.Tree,
+  T.Water,
+  T.Bench,
+  T.Desk,
+  T.Shelf,
+  T.Counter,
+  T.Pc,
+  T.Table,
+  T.Stall,
+  T.Umbrella,
+  T.Fire,
+  T.Game,
+  T.Goal,
+  T.Gate,
+]);
+
 const SEATS = new Set<T>([T.Seat, T.Beanbag]);
 
 export type ZoneId =
-  | 'gate'
-  | 'plaza'
   | 'vib'
-  | 'nyb'
-  | 'library'
-  | 'codelab'
-  | 'canteen'
-  | 'events'
-  | 'chai'
-  | 'foodcourt'
   | 'lawn'
-  | 'maggi'
-  | 'gamezone'
-  | 'garden';
+  | 'football'
+  | 'nyb'
+  | 'bh1'
+  | 'mess'
+  | 'basketball'
+  | 'bh2'
+  | 'cricket'
+  | 'tennis'
+  | 'gh'
+  | 'jmch'
+  | 'ground'
+  | 'bh3'
+  | 'maingate'
+  | 'gate3'
+  | 'gate16';
 
 export interface Zone {
   id: ZoneId;
@@ -62,14 +89,15 @@ export interface Zone {
 }
 
 export interface Building {
+  id: string;
   label: string;
+  category: 'academic' | 'hostel' | 'mess' | 'institutional';
   x: number;
   y: number;
   w: number;
   h: number;
 }
 
-/** A café table and the seats around it. Sitting on a seat puts you at the table. */
 export interface DiningTable {
   id: string;
   zone: ZoneId;
@@ -79,11 +107,9 @@ export interface DiningTable {
   seats: [number, number][];
 }
 
-/** A food counter: its staff (in uniform) and where the waiter comes out from. */
 export interface Counter {
   zone: ZoneId;
   uniform: string;
-  /** Walkable tile the waiter starts from and returns to. */
   kitchen: [number, number];
   staff: { x: number; y: number; name: string }[];
 }
@@ -96,225 +122,544 @@ export interface CampusMap {
   buildings: Building[];
   at: (x: number, y: number) => T;
   blocked: (x: number, y: number) => boolean;
-  /** Standing still here makes you sit down. */
   isSeat: (x: number, y: number) => boolean;
-  /** The café table whose seat is at this position, if any. */
   tableAt: (x: number, y: number) => DiningTable | null;
   zoneAt: (x: number, y: number) => Zone | null;
 }
 
-/** Deterministic per-tile noise so the map looks the same for everyone. */
+/** Deterministic per-tile noise so the map looks identical for every player. */
 export const hash = (x: number, y: number) => {
   let h = (x * 374761393 + y * 668265263) | 0;
   h = (h ^ (h >> 13)) * 1274126177;
   return ((h ^ (h >> 16)) >>> 0) % 1000;
 };
 
+// =========================================================================
+// CENTRALIZED MAP GEOMETRY DEFINITIONS
+// =========================================================================
+
+interface BuildingDef {
+  id: string;
+  label: string;
+  category: 'academic' | 'hostel' | 'mess' | 'institutional';
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  doors: [number, number][];
+}
+
+const BUILDINGS: BuildingDef[] = [
+  // West Academic Block (x: 2..16, y: 14..34)
+  {
+    id: 'vib',
+    label: 'VIB',
+    category: 'academic',
+    x: 2,
+    y: 14,
+    w: 15,
+    h: 21,
+    doors: [
+      [16, 23],
+      [16, 24],
+    ],
+  },
+  // Academic Block below Football Ground (x: 43..60, y: 25..38)
+  {
+    id: 'nyb',
+    label: 'NYB',
+    category: 'academic',
+    x: 43,
+    y: 25,
+    w: 18,
+    h: 14,
+    doors: [
+      [51, 25],
+      [52, 25],
+      [51, 38],
+      [52, 38],
+    ],
+  },
+  // Boys Hostel 1 (x: 65..78, y: 8..22)
+  {
+    id: 'bh1',
+    label: 'BH1',
+    category: 'hostel',
+    x: 65,
+    y: 8,
+    w: 14,
+    h: 15,
+    doors: [
+      [65, 15],
+      [65, 16],
+      [71, 22],
+      [72, 22],
+    ],
+  },
+  // Campus Mess (x: 65..78, y: 25..38)
+  {
+    id: 'mess',
+    label: 'MESS',
+    category: 'mess',
+    x: 65,
+    y: 25,
+    w: 14,
+    h: 14,
+    doors: [
+      [65, 31],
+      [65, 32],
+      [71, 25],
+      [72, 25],
+      [71, 38],
+      [72, 38],
+    ],
+  },
+  // Boys Hostel 2 (x: 95..111, y: 8..22)
+  {
+    id: 'bh2',
+    label: 'BH2',
+    category: 'hostel',
+    x: 95,
+    y: 8,
+    w: 17,
+    h: 15,
+    doors: [
+      [95, 15],
+      [95, 16],
+      [103, 22],
+      [104, 22],
+    ],
+  },
+  // Girls Hostel (x: 100..112, y: 25..38)
+  {
+    id: 'gh',
+    label: 'GH',
+    category: 'hostel',
+    x: 100,
+    y: 25,
+    w: 13,
+    h: 14,
+    doors: [
+      [100, 31],
+      [100, 32],
+      [106, 25],
+      [107, 25],
+    ],
+  },
+  // JMCH (Medical College Block - South-West, x: 13..52, y: 46..62)
+  {
+    id: 'jmch',
+    label: 'JMCH',
+    category: 'institutional',
+    x: 13,
+    y: 46,
+    w: 40,
+    h: 17,
+    doors: [
+      [32, 46],
+      [33, 46],
+      [52, 54],
+      [52, 55],
+    ],
+  },
+  // Boys Hostel 3 (x: 62..93, y: 68..77)
+  {
+    id: 'bh3',
+    label: 'BH3',
+    category: 'hostel',
+    x: 62,
+    y: 68,
+    w: 32,
+    h: 10,
+    doors: [
+      [93, 71],
+      [93, 72],
+      [77, 68],
+      [78, 68],
+    ],
+  },
+];
+
+// Campus Road network segments [x, y, w, h]
+const ROAD_SEGMENTS: [number, number, number, number][] = [
+  // 1. Main Gate entrance road coming south into Central Lawn ring
+  [30, 1, 3, 8],
+
+  // 2. Central Lawn ring road (completely encircling Central Lawn)
+  [21, 8, 21, 2], // north side
+  [21, 8, 2, 33], // west side
+  [21, 39, 21, 2], // south side
+  [40, 8, 2, 33], // east side
+
+  // 3. Road to VIB (west) - connects right wall of VIB (x=16) to Central Lawn west road (x=21)
+  [16, 23, 6, 2],
+
+  // 4. Upper campus east-west avenue (north of Football, BH1, Basketball, BH2)
+  [41, 6, 74, 2],
+
+  // 5. Gate No. 3 road and central north-south spine between Football/NYB and BH1/Mess
+  [62, 1, 3, 42],
+
+  // 6. Road between Football Ground and NYB
+  [41, 23, 22, 2],
+
+  // 7. Road between BH1 and Mess
+  [63, 23, 18, 2],
+
+  // 8. Sports Avenue between BH1/Mess and Basketball/Cricket
+  [79, 6, 3, 37],
+
+  // 9. Crossroad between Basketball and Cricket Turf
+  [81, 19, 18, 2],
+
+  // 10. Crossroad between BH2 and GH (south of BH2)
+  [93, 23, 22, 2],
+  [91, 15, 4, 2], // connector to BH2 west door
+  [97, 31, 3, 2], // connector to GH west door
+
+  // 11. Eastern perimeter avenue (passes GH, Ground, leads to Gate 16)
+  [113, 6, 3, 60],
+  [115, 35, 5, 2], // road out to Gate No. 16
+
+  // 12. Main East-West Campus Road (arterial road between Upper Campus and JMCH/Ground)
+  [10, 41, 106, 3],
+
+  // Short paths to building doors from Campus Road
+  [51, 39, 2, 3], // NYB south door connector
+  [71, 39, 2, 3], // Mess south door connector
+  [32, 43, 2, 3], // JMCH north door connector
+
+  // 13. Avenue between JMCH and Large Ground
+  [53, 43, 4, 23],
+
+  // 14. Road west of JMCH
+  [11, 43, 2, 23],
+
+  // 15. Road south of JMCH
+  [11, 64, 46, 2],
+
+  // 16. Road south of Large Ground
+  [54, 64, 62, 2],
+
+  // 17. Connecting road south from Ground down to BH3
+  [98, 64, 2, 9],
+  [93, 71, 6, 2], // enters BH3 east door at x=93
+];
+
+export const MAP_ZONES: Zone[] = [
+  { id: 'maingate', label: 'MAIN GATE', x: 28, y: 0, w: 7, h: 8 },
+  { id: 'gate3', label: 'GATE NO. 3', x: 60, y: 0, w: 7, h: 7 },
+  { id: 'gate16', label: 'GATE NO. 16', x: 114, y: 33, w: 6, h: 6 },
+  { id: 'vib', label: 'VIB', x: 2, y: 14, w: 15, h: 21 },
+  { id: 'lawn', label: 'CENTRAL LAWN', x: 21, y: 8, w: 21, h: 33 },
+  { id: 'football', label: 'FOOTBALL GROUND', x: 42, y: 7, w: 20, h: 17 },
+  { id: 'nyb', label: 'NYB', x: 42, y: 24, w: 20, h: 16 },
+  { id: 'bh1', label: 'BH1', x: 64, y: 7, w: 16, h: 17 },
+  { id: 'mess', label: 'MESS', x: 64, y: 24, w: 16, h: 16 },
+  { id: 'basketball', label: 'BASKETBALL', x: 81, y: 7, w: 13, h: 13 },
+  { id: 'bh2', label: 'BH2', x: 94, y: 7, w: 19, h: 17 },
+  { id: 'cricket', label: 'CRICKET TURF', x: 81, y: 20, w: 8, h: 20 },
+  { id: 'tennis', label: 'TENNIS COURT', x: 89, y: 24, w: 10, h: 16 },
+  { id: 'gh', label: 'GH', x: 99, y: 24, w: 15, h: 16 },
+  { id: 'jmch', label: 'JMCH', x: 11, y: 44, w: 43, h: 21 },
+  { id: 'ground', label: 'GROUND', x: 56, y: 44, w: 58, h: 21 },
+  { id: 'bh3', label: 'BH3', x: 60, y: 66, w: 36, h: 13 },
+];
+
 export function buildCampus(): CampusMap {
   const tiles = new Uint8Array(W * H).fill(T.Grass);
+
   const set = (x: number, y: number, t: T) => {
     if (x >= 0 && y >= 0 && x < W && y < H) tiles[y * W + x] = t;
   };
+
   const rect = (x: number, y: number, w: number, h: number, t: T) => {
-    for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) set(i, j, t);
+    for (let j = y; j < y + h; j++) {
+      for (let i = x; i < x + w; i++) {
+        set(i, j, t);
+      }
+    }
   };
+
   const buildings: Building[] = [];
   const tables: DiningTable[] = [];
-  /**
-   * A café table with 2, 3 or 4 seats: left + right, then above, then below
-   * (above first so a 3-seat table's third diner doesn't hide the plates).
-   * `outdoor` uses an umbrella table and bean bags instead of a table and stools.
-   */
+
   const table = (zone: ZoneId, x: number, y: number, size: 2 | 3 | 4, outdoor = false) => {
     const seats: [number, number][] = ([[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]] as [number, number][]).slice(0, size);
     set(x, y, outdoor ? T.Umbrella : T.Table);
     for (const [sx, sy] of seats) set(sx, sy, outdoor ? T.Beanbag : T.Seat);
     tables.push({ id: `t${tables.length + 1}`, zone, size, x, y, seats });
   };
-  const building = (label: string, x: number, y: number, w: number, h: number, doors: [number, number][]) => {
-    rect(x, y, w, h, T.Wall);
-    rect(x + 1, y + 1, w - 2, h - 2, T.Floor);
-    for (const [dx, dy] of doors) set(dx, dy, T.Floor);
-    buildings.push({ label, x, y, w, h });
-  };
 
-  // Roads: main east-west avenue, south avenue, central north-south spine, the plaza.
-  rect(0, 13, W, 2, T.Path);
-  rect(0, 25, W, 2, T.Path);
-  rect(27, 0, 2, H, T.Path);
-  rect(22, 15, 12, 10, T.Path);
-  rect(26, 18, 4, 3, T.Water); // fountain
+  // 1. Lay down the complete road network
+  for (const [rx, ry, rw, rh] of ROAD_SEGMENTS) {
+    rect(rx, ry, rw, rh, T.Path);
+  }
 
-  building('VIB BLOCK', 2, 1, 20, 11, [[12, 11], [13, 11]]);
-  building('NYB BLOCK', 34, 1, 20, 11, [[43, 11], [44, 11]]);
-  building('LIBRARY', 2, 16, 16, 8, [[17, 19], [17, 20]]);
-  building('CODE LAB', 38, 16, 16, 8, [[38, 19], [38, 20]]);
-  building('CANTEEN', 2, 28, 16, 7, [[9, 28], [10, 28]]);
+  // 2. Construct all buildings
+  for (const b of BUILDINGS) {
+    rect(b.x, b.y, b.w, b.h, T.Wall);
+    rect(b.x + 1, b.y + 1, b.w - 2, b.h - 2, T.Floor);
+    for (const [dx, dy] of b.doors) {
+      set(dx, dy, T.Floor);
+    }
+    buildings.push({
+      id: b.id,
+      label: b.label,
+      category: b.category,
+      x: b.x,
+      y: b.y,
+      w: b.w,
+      h: b.h,
+    });
+  }
 
-  // Short paths from doors to the roads.
-  rect(12, 12, 2, 1, T.Path);
-  rect(43, 12, 2, 1, T.Path);
-  rect(18, 19, 4, 2, T.Path);
-  rect(34, 19, 4, 2, T.Path);
-  rect(9, 27, 2, 1, T.Path);
+  // 3. Central Lawn Landscaping (enclosed garden)
+  // Walkable pathways, flowerbeds, fountain, park benches, trees
+  rect(24, 10, 15, 27, T.Grass);
+  rect(30, 10, 3, 27, T.Path); // North-south central garden path
+  rect(24, 23, 15, 2, T.Path); // East-west garden path
+  rect(29, 21, 5, 5, T.Water); // Central water fountain / pond
+  // Floral borders & decorative deck/benches
+  for (let y = 12; y <= 35; y += 4) {
+    set(26, y, T.Bench);
+    set(36, y, T.Bench);
+    set(25, y, T.Flower);
+    set(37, y, T.Flower);
+    set(28, y, T.Tree);
+    set(34, y, T.Tree);
+  }
 
-  // Classrooms: desk rows with a centre aisle.
-  for (const bx of [2, 34]) {
-    for (const y of [3, 5, 7, 9]) {
-      for (let x = bx + 3; x < bx + 17; x += 3) if (Math.abs(x - (bx + 10)) > 1) {
+  // 4. Football Ground (outdoor sports field)
+  rect(43, 8, 18, 15, T.Grass);
+  // Pitch outer chalk boundary
+  for (let x = 44; x <= 59; x++) {
+    set(x, 9, T.FieldLine);
+    set(x, 21, T.FieldLine);
+  }
+  for (let y = 9; y <= 21; y++) {
+    set(44, y, T.FieldLine);
+    set(59, y, T.FieldLine);
+    set(51, y, T.FieldLine); // Halfway line
+  }
+  // Center circle and penalty spots
+  rect(50, 14, 3, 3, T.FieldLine);
+  set(51, 15, T.Grass);
+  rect(45, 13, 2, 5, T.FieldLine);
+  rect(57, 13, 2, 5, T.FieldLine);
+  // Goalposts
+  set(43, 14, T.Goal);
+  set(43, 16, T.Goal);
+  set(60, 14, T.Goal);
+  set(60, 16, T.Goal);
+
+  // 5. Basketball Court (outdoor sports court)
+  rect(83, 8, 9, 11, T.Court);
+  // Court boundary
+  for (let x = 83; x <= 91; x++) {
+    set(x, 8, T.CourtLine);
+    set(x, 18, T.CourtLine);
+  }
+  for (let y = 8; y <= 18; y++) {
+    set(83, y, T.CourtLine);
+    set(91, y, T.CourtLine);
+  }
+  // Center line and hoops
+  for (let x = 84; x <= 90; x++) set(x, 13, T.CourtLine);
+  set(87, 8, T.Goal); // North hoop
+  set(87, 18, T.Goal); // South hoop
+
+  // 6. Cricket Turf (narrow outdoor sports turf)
+  rect(83, 21, 6, 17, T.Turf);
+  // Central clay pitch
+  rect(85, 24, 2, 11, T.Pitch);
+  set(85, 24, T.FieldLine); // Bowling crease
+  set(86, 24, T.FieldLine);
+  set(85, 34, T.FieldLine); // Batting crease
+  set(86, 34, T.FieldLine);
+  set(85, 23, T.Goal); // Wickets north
+  set(85, 35, T.Goal); // Wickets south
+
+  // 7. Tennis Court (sports court)
+  rect(90, 25, 8, 14, T.Court);
+  for (let x = 90; x <= 97; x++) {
+    set(x, 25, T.CourtLine);
+    set(x, 38, T.CourtLine);
+    set(x, 31, T.CourtLine); // Net line
+  }
+  for (let y = 25; y <= 38; y++) {
+    set(90, y, T.CourtLine);
+    set(97, y, T.CourtLine);
+  }
+  set(89, 31, T.Goal); // Net post
+  set(98, 31, T.Goal);
+
+  // 8. Large Ground (South-East open area)
+  rect(58, 46, 54, 18, T.Grass);
+  // Running track along perimeter
+  for (let x = 58; x <= 111; x++) {
+    set(x, 46, T.Track);
+    set(x, 47, T.Track);
+    set(x, 62, T.Track);
+    set(x, 63, T.Track);
+  }
+  for (let y = 46; y <= 63; y++) {
+    set(58, y, T.Track);
+    set(59, y, T.Track);
+    set(110, y, T.Track);
+    set(111, y, T.Track);
+  }
+  // Spectator benches and shade trees along periphery
+  for (let x = 62; x <= 106; x += 6) {
+    set(x, 45, T.Bench);
+    set(x + 2, 45, T.Tree);
+    set(x, 64, T.Bench);
+    set(x + 2, 64, T.Tree);
+  }
+
+  // 9. Campus Gates (Gate pillars)
+  // Main Gate (North)
+  set(29, 2, T.Gate);
+  set(29, 3, T.Gate);
+  set(33, 2, T.Gate);
+  set(33, 3, T.Gate);
+  // Gate No. 3 (North)
+  set(61, 2, T.Gate);
+  set(61, 3, T.Gate);
+  set(65, 2, T.Gate);
+  set(65, 3, T.Gate);
+  // Gate No. 16 (East)
+  set(118, 34, T.Gate);
+  set(119, 34, T.Gate);
+  set(118, 37, T.Gate);
+  set(119, 37, T.Gate);
+
+  // 10. Building Interiors & Furnishing
+  // VIB Academic Block (Engineering classrooms, lab PCs, desks)
+  for (let y = 17; y <= 31; y += 3) {
+    for (let x = 5; x <= 13; x += 3) {
+      if (x !== 8) {
         set(x, y, T.Desk);
         set(x + 1, y, T.Desk);
       }
     }
   }
-  // Library shelves.
-  for (const y of [18, 20, 22]) for (let x = 4; x < 15; x++) if (x !== 9) set(x, y, T.Shelf);
-  // Code lab: rows of PCs.
-  for (const y of [18, 21]) for (let x = 41; x < 52; x += 2) set(x, y, T.Pc);
-  // Canteen: counter + tables.
-  rect(4, 29, 6, 1, T.Counter);
-  for (const [x, y] of [[5, 32], [8, 32], [11, 31], [14, 31], [11, 33], [14, 33]]) set(x!, y!, T.Desk);
+  for (let y = 17; y <= 29; y += 3) set(4, y, T.Pc);
 
-  // Event ground: open-air stage and benches.
-  rect(41, 28, 10, 2, T.Stage);
-  for (let x = 40; x < 53; x += 3) {
-    set(x, 32, T.Bench);
-    set(x + 1, 32, T.Bench);
+  // NYB Academic Block (Classrooms & Lecture rooms)
+  for (let y = 27; y <= 35; y += 3) {
+    for (let x = 46; x <= 57; x += 3) {
+      if (x !== 51 && x !== 52) {
+        set(x, y, T.Desk);
+        set(x + 1, y, T.Desk);
+      }
+    }
   }
-  rect(44, 27, 2, 1, T.Path);
 
-  // Plaza benches and the main gate.
-  for (const [x, y] of [[23, 16], [32, 16], [23, 23], [32, 23]]) set(x!, y!, T.Bench);
-  set(26, 34, T.Wall);
-  set(29, 34, T.Wall);
-  set(26, 35, T.Wall);
-  set(29, 35, T.Wall);
-
-  // ---------- Food street (east side): cafés and places to hang out ----------
-  rect(68, 0, 2, H, T.Path); // the food street itself
-
-  // Chai tapri: counter, then a table for 2, a table for 4, a table for 3 and another for 2.
-  building('CHAI TAPRI', 57, 1, 10, 11, [[61, 11], [62, 11]]);
-  rect(61, 12, 2, 1, T.Path);
-  rect(59, 3, 6, 1, T.Counter);
-  table('chai', 59, 6, 2);
-  table('chai', 64, 6, 4);
-  table('chai', 59, 9, 3);
-  table('chai', 64, 9, 2);
-
-  // Food court: three stalls along the back wall, tables either side of the aisle.
-  building('FOOD COURT', 71, 1, 12, 11, [[76, 11], [77, 11]]);
-  rect(76, 12, 2, 1, T.Path);
-  for (const x of [72, 76, 80]) rect(x, 3, 2, 1, T.Stall);
-  table('foodcourt', 73, 6, 4);
-  table('foodcourt', 80, 6, 4);
-  table('foodcourt', 73, 9, 3);
-  table('foodcourt', 80, 9, 2);
-
-  // Adda lawn: open-air deck, umbrella tables with bean bags, and a juice cart.
-  rect(57, 16, 10, 8, T.Deck);
-  rect(61, 16, 2, 1, T.Stall);
-  table('lawn', 59, 18, 2, true);
-  table('lawn', 64, 18, 4, true);
-  table('lawn', 59, 21, 3, true);
-  table('lawn', 64, 21, 2, true);
-
-  // Maggi point: door onto the food street.
-  building('MAGGI POINT', 71, 16, 12, 8, [[71, 19], [71, 20]]);
-  rect(70, 19, 1, 2, T.Path);
-  rect(74, 18, 8, 1, T.Counter); // staff work behind it, along the back wall
-  table('maggi', 74, 19, 2);
-  table('maggi', 78, 20, 4);
-  table('maggi', 74, 21, 3);
-
-  // Game zone: carrom + foosball with seats, arcade cabinets along the back.
-  building('GAME ZONE', 71, 28, 12, 7, [[76, 28], [77, 28]]);
-  rect(76, 27, 2, 1, T.Path);
-  for (const x of [73, 79]) {
-    rect(x, 30, 2, 1, T.Game);
-    set(x - 1, 30, T.Seat);
-    set(x + 2, 30, T.Seat);
+  // JMCH Institutional Medical College Block
+  // Lecture theatre rows, medical research desks, PC terminals, central reception
+  for (let y = 49; y <= 59; y += 3) {
+    for (let x = 16; x <= 26; x += 3) {
+      set(x, y, T.Desk);
+      set(x + 1, y, T.Desk);
+    }
+    for (let x = 38; x <= 48; x += 3) {
+      set(x, y, T.Pc);
+      set(x + 1, y, T.Desk);
+    }
   }
-  for (const x of [73, 75, 79, 81]) set(x, 33, T.Pc);
+  // Central reception / lobby (away from center walkway)
+  rect(28, 56, 6, 1, T.Counter);
 
-  // Chill garden: bonfire ringed by bean bags.
-  rect(57, 28, 10, 7, T.Deck);
-  rect(61, 31, 2, 1, T.Fire);
-  for (const [x, y] of [[61, 29], [62, 29], [59, 30], [64, 30], [59, 32], [64, 32], [61, 33], [62, 33]] as const) set(x, y, T.Beanbag);
+  // Hostels: BH1, BH2, BH3, GH Furnishing (Study desks, shelves, rooms)
+  const furnishHostel = (bx: number, by: number, bw: number, bh: number) => {
+    for (let y = by + 2; y <= by + bh - 3; y += 3) {
+      set(bx + 2, y, T.Desk);
+      set(bx + bw - 3, y, T.Desk);
+    }
+    set(bx + Math.floor(bw / 2), by + 3, T.Shelf);
+    set(bx + Math.floor(bw / 2), by + bh - 4, T.Shelf);
+  };
+  furnishHostel(65, 8, 14, 15); // BH1
+  furnishHostel(95, 8, 17, 15); // BH2
+  furnishHostel(100, 25, 13, 14); // GH
+  furnishHostel(62, 68, 32, 10); // BH3
 
-  // Trees and flowers on open grass, kept off anything walkable-important.
+  // 11. Campus Mess Dining Setup & Waiter Tables
+  // Food serving counter along north wall of Mess
+  rect(67, 27, 8, 1, T.Counter);
+  // Dining tables with seating
+  table('mess', 68, 31, 4);
+  table('mess', 74, 31, 4);
+  table('mess', 68, 35, 3);
+  table('mess', 74, 35, 2);
+
+  // Central Lawn outdoor seating
+  table('lawn', 26, 17, 2, true);
+  table('lawn', 36, 17, 2, true);
+  table('lawn', 26, 29, 2, true);
+  table('lawn', 36, 29, 2, true);
+
+  // 12. Peripheral Nature Pass: Trees and Flowers on Open Grass
   const nearNonGrass = (x: number, y: number) => {
-    for (let j = -1; j <= 1; j++)
+    for (let j = -1; j <= 1; j++) {
       for (let i = -1; i <= 1; i++) {
         const xx = x + i;
         const yy = y + j;
         if (xx >= 0 && yy >= 0 && xx < W && yy < H && tiles[yy * W + xx] !== T.Grass) return true;
       }
+    }
     return false;
   };
-  for (let y = 0; y < H; y++)
+
+  for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       if (tiles[y * W + x] !== T.Grass) continue;
-      const edge = x === 0 || x === W - 1 || y === H - 1;
+      const edge = x <= 1 || x >= W - 2 || y <= 1 || y >= H - 2;
       const n = hash(x, y);
-      if ((edge && n % 3 !== 0 && !nearNonGrass(x, y)) || (n < 55 && !nearNonGrass(x, y))) set(x, y, T.Tree);
-      else if (n > 930) set(x, y, T.Flower);
+      if ((edge && n % 3 !== 0 && !nearNonGrass(x, y)) || (n < 45 && !nearNonGrass(x, y))) {
+        set(x, y, T.Tree);
+      } else if (n > 940 && !nearNonGrass(x, y)) {
+        set(x, y, T.Flower);
+      }
     }
+  }
 
-  const zones: Zone[] = [
-    { id: 'vib', label: 'VIB BLOCK', x: 3, y: 2, w: 18, h: 9 },
-    { id: 'nyb', label: 'NYB BLOCK', x: 35, y: 2, w: 18, h: 9 },
-    { id: 'library', label: 'LIBRARY', x: 3, y: 17, w: 14, h: 6 },
-    { id: 'codelab', label: 'CODE LAB', x: 39, y: 17, w: 14, h: 6 },
-    { id: 'canteen', label: 'CANTEEN', x: 3, y: 29, w: 14, h: 5 },
-    { id: 'events', label: 'EVENT GROUND', x: 38, y: 27, w: 16, h: 8 },
-    { id: 'plaza', label: 'FOUNTAIN PLAZA', x: 22, y: 15, w: 12, h: 10 },
-    { id: 'gate', label: 'MAIN GATE', x: 25, y: 30, w: 6, h: 6 },
-    { id: 'chai', label: 'CHAI TAPRI', x: 58, y: 2, w: 8, h: 9 },
-    { id: 'foodcourt', label: 'FOOD COURT', x: 72, y: 2, w: 10, h: 9 },
-    { id: 'lawn', label: 'ADDA LAWN', x: 57, y: 16, w: 10, h: 8 },
-    { id: 'maggi', label: 'MAGGI POINT', x: 72, y: 17, w: 10, h: 6 },
-    { id: 'gamezone', label: 'GAME ZONE', x: 72, y: 29, w: 10, h: 5 },
-    { id: 'garden', label: 'CHILL GARDEN', x: 57, y: 28, w: 10, h: 7 },
-  ];
+  const at = (x: number, y: number): T =>
+    x < 0 || y < 0 || x >= W || y >= H ? T.Wall : (tiles[y * W + x] as T);
 
-  const at = (x: number, y: number): T => (x < 0 || y < 0 || x >= W || y >= H ? T.Wall : (tiles[y * W + x] as T));
   const counters: Counter[] = [
     {
-      zone: 'chai',
+      zone: 'mess',
       uniform: '#ff8a3d',
-      kitchen: [65, 2],
-      staff: [{ x: 60, y: 2, name: 'RAJU' }, { x: 62, y: 2, name: 'CHOTU' }, { x: 64, y: 2, name: 'PAPPU' }],
+      kitchen: [71, 26],
+      staff: [
+        { x: 68, y: 26, name: 'RAJU' },
+        { x: 72, y: 26, name: 'CHOTU' },
+        { x: 74, y: 26, name: 'PAPPU' },
+      ],
     },
-    {
-      zone: 'foodcourt',
-      uniform: '#ff3ea5',
-      kitchen: [75, 2],
-      staff: [{ x: 73, y: 2, name: 'SUNIL' }, { x: 77, y: 2, name: 'PINKY' }, { x: 81, y: 2, name: 'AMAN' }],
-    },
-    {
-      zone: 'maggi',
-      uniform: '#ffe04a',
-      kitchen: [73, 17],
-      staff: [{ x: 75, y: 17, name: 'BABLU' }, { x: 78, y: 17, name: 'MONU' }, { x: 80, y: 17, name: 'GOLU' }],
-    },
-    { zone: 'lawn', uniform: '#7cff6b', kitchen: [60, 16], staff: [{ x: 63, y: 16, name: 'KAKA' }, { x: 60, y: 17, name: 'LALLU' }] },
   ];
 
   const seatTable = new Map<number, DiningTable>();
-  for (const t of tables) for (const [sx, sy] of t.seats) seatTable.set(sy * W + sx, t);
+  for (const t of tables) {
+    for (const [sx, sy] of t.seats) {
+      seatTable.set(sy * W + sx, t);
+    }
+  }
 
   return {
     tiles,
     tables,
     counters,
-    zones,
+    zones: MAP_ZONES,
     buildings,
     at,
     blocked: (x, y) => BLOCKING.has(at(Math.floor(x), Math.floor(y))),
     isSeat: (x, y) => SEATS.has(at(Math.floor(x), Math.floor(y))),
     tableAt: (x, y) => seatTable.get(Math.floor(y) * W + Math.floor(x)) ?? null,
-    zoneAt: (x, y) => zones.find((z) => x >= z.x && x < z.x + z.w && y >= z.y && y < z.y + z.h) ?? null,
+    zoneAt: (x, y) =>
+      MAP_ZONES.find((z) => x >= z.x && x < z.x + z.w && y >= z.y && y < z.y + z.h) ?? null,
   };
 }
 
@@ -335,7 +680,12 @@ export function canStand(map: CampusMap, x: number, y: number): boolean {
  * Shortest walk over whole tiles (4-way BFS) from a tile to the nearest tile matching `goal`.
  * Returns the tiles to step through, excluding the start; null if none is reachable within `maxSteps`.
  */
-export function findPath(map: CampusMap, from: [number, number], goal: (x: number, y: number) => boolean, maxSteps = 400): [number, number][] | null {
+export function findPath(
+  map: CampusMap,
+  from: [number, number],
+  goal: (x: number, y: number) => boolean,
+  maxSteps = 1000
+): [number, number][] | null {
   const key = (x: number, y: number) => y * W + x;
   const prev = new Map<number, number>([[key(...from), -1]]);
   let frontier: [number, number][] = [from];
@@ -344,13 +694,29 @@ export function findPath(map: CampusMap, from: [number, number], goal: (x: numbe
     for (const [x, y] of frontier) {
       if (goal(x, y) && step > 0) {
         const path: [number, number][] = [];
-        for (let k = key(x, y); k !== key(...from); k = prev.get(k)!) path.unshift([k % W, Math.floor(k / W)]);
+        for (let k = key(x, y); k !== key(...from); k = prev.get(k)!) {
+          path.unshift([k % W, Math.floor(k / W)]);
+        }
         return path;
       }
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ] as const) {
         const nx = x + dx;
         const ny = y + dy;
-        if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(key(nx, ny)) || map.blocked(nx + 0.5, ny + 0.5)) continue;
+        if (
+          nx < 0 ||
+          ny < 0 ||
+          nx >= W ||
+          ny >= H ||
+          prev.has(key(nx, ny)) ||
+          map.blocked(nx + 0.5, ny + 0.5)
+        ) {
+          continue;
+        }
         prev.set(key(nx, ny), key(x, y));
         next.push([nx, ny]);
       }
