@@ -169,7 +169,10 @@ export function attachRealtime(server: Server) {
         return leave(c);
 
       case 'world:join': {
-        const { you, players, isNew } = world.join({ id: c.userId, name: c.name, color: c.color }, c.id);
+        // Read current appearance even when this socket predates a character edit.
+        const user = await usersRepo.findById(c.userId);
+        if (!user) return;
+        const { you, players, isNew } = world.join(user, c.id);
         c.inWorld = true;
         send(c, { type: 'world:state', players, you, plates: world.plates() });
         if (isNew) toWorld({ type: 'world:player', player: you });
@@ -281,6 +284,11 @@ export function attachRealtime(server: Server) {
     });
   });
 
+  const characterChanged = (user: import('@adda/shared').PublicUser) => {
+    const player = world.updateCharacter(user);
+    if (player) toWorld({ type: 'world:player', player });
+  };
+  bus.on('character:changed', characterChanged);
   bus.on('dm:created', ({ message, from }) => {
     toUser(message.recipientId, { type: 'dm', message, from });
     toUser(message.senderId, { type: 'dm', message, from });
@@ -305,6 +313,7 @@ export function attachRealtime(server: Server) {
   }, 30_000);
 
   wss.on('close', () => {
+    bus.off('character:changed', characterChanged);
     clearInterval(refill);
     clearInterval(sweep);
     clearInterval(heartbeat);

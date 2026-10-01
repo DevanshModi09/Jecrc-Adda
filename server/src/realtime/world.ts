@@ -30,7 +30,7 @@ const view = ({ connections: _c, lastMoveAt: _l, ...p }: Entry): WorldPlayer => 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 export const world = {
-  join(user: { id: string; name: string; color: string }, connId: string): { you: WorldPlayer; players: WorldPlayer[]; isNew: boolean } {
+  join(user: Pick<WorldPlayer, 'id' | 'name' | 'color' | 'shirtColor' | 'hairStyle'>, connId: string): { you: WorldPlayer; players: WorldPlayer[]; isNew: boolean } {
     let entry = players.get(user.id);
     const isNew = !entry;
     if (!entry) {
@@ -38,7 +38,17 @@ export const world = {
       players.set(user.id, entry);
     }
     entry.connections.add(connId);
+    entry.shirtColor = user.shirtColor ?? null;
+    entry.hairStyle = user.hairStyle ?? 'hair01';
     return { you: view(entry), players: [...players.values()].map(view), isNew };
+  },
+
+  updateCharacter(user: Pick<WorldPlayer, 'id' | 'shirtColor' | 'hairStyle'>): WorldPlayer | null {
+    const entry = players.get(user.id);
+    if (!entry) return null;
+    entry.shirtColor = user.shirtColor ?? null;
+    entry.hairStyle = user.hairStyle ?? 'hair01';
+    return view(entry);
   },
 
   /** Returns true when the user has left the world entirely (last tab closed). */

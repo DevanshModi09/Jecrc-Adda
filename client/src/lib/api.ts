@@ -1,4 +1,6 @@
 import type {
+  ShirtColor,
+  HairStyle,
   Assignment,
   AssignmentStatus,
   SubjectAssignments,
@@ -111,6 +113,8 @@ type UserRes = { user: PublicUser };
 
 export const api = {
   auth: {
+    updateCharacter: (body: { shirtColor: ShirtColor | null; hairStyle: HairStyle }) =>
+      patch<UserRes>('/me/character', body).then((r) => r.user),
     me: () => get<UserRes>('/me').then((r) => r.user),
     login: (username: string, password: string) => post<UserRes>('/auth/login', { username, password }).then((r) => r.user),
     register: (body: RegisterBody) => post<UserRes>('/auth/register', body).then((r) => r.user),

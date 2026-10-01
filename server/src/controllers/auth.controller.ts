@@ -2,9 +2,12 @@ import type { Request, Response } from 'express';
 import { authService } from '../services/auth.service.ts';
 import { usersService, toPublicUser } from '../services/users.service.ts';
 import { clearSessionCookie, currentUser, SESSION_COOKIE, setSessionCookie } from '../middleware/auth.ts';
-import { loginSchema, profileSchema, registerSchema } from '../validators/schemas.ts';
+import { characterSchema, loginSchema, profileSchema, registerSchema } from '../validators/schemas.ts';
 
 export const authController = {
+  async updateCharacter(req: Request, res: Response) {
+    res.json({ user: await usersService.updateCharacter(currentUser(req).id, characterSchema.parse(req.body)) });
+  },
   async register(req: Request, res: Response) {
     const session = await authService.register(registerSchema.parse(req.body));
     setSessionCookie(res, session);

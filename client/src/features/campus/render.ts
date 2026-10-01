@@ -1,4 +1,4 @@
-import type { Facing } from '@adda/shared';
+import type { Facing, HairStyle } from '@adda/shared';
 import { H, hash, T, TILE, W, type CampusMap } from './map';
 
 // Pixel-art rendering with plain fillRects, in the Arcade palette.
@@ -233,7 +233,7 @@ export function drawAvatar(
   dir: Facing,
   moving: boolean,
   t: number,
-  { sitting = false, staff = false, carrying }: { sitting?: boolean; staff?: boolean; carrying?: string } = {}
+  { sitting = false, staff = false, carrying, hairStyle = 'hair01' }: { sitting?: boolean; staff?: boolean; carrying?: string; hairStyle?: HairStyle } = {}
 ) {
   const x = Math.round(fx - 6);
   const y = Math.round(fy - 16) + (sitting ? 3 : 0); // sitting drops the body onto the seat
@@ -265,6 +265,12 @@ export function drawAvatar(
   if (dir === 'down') r(4, 4, 1, 1, LEGS), r(7, 4, 1, 1, LEGS);
   if (dir === 'left') r(4, 4, 1, 1, LEGS);
   if (dir === 'right') r(7, 4, 1, 1, LEGS);
+
+  if (hairStyle === 'hair02' && !staff) {
+    r(1, 1, 2, 8, HAIR);
+    r(9, 1, 2, 8, HAIR);
+    if (dir === 'up') r(2, 2, 8, 7, HAIR);
+  }
 
   if (staff) {
     r(1, -2, 10, 3, UNIFORM_WHITE); // cap

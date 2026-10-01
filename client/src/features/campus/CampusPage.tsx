@@ -131,6 +131,8 @@ export function CampusPage({ me }: { me: PublicUser }) {
         if (e.key === 'Escape') (document.activeElement as HTMLElement).blur();
         return;
       }
+      // Let navigation and other focused controls keep their native keyboard actions.
+      if (e.target instanceof Element && e.target.closest('a, button, select, [contenteditable="true"]')) return;
       if (e.key === 'Enter') {
         e.preventDefault();
         openChat(true);

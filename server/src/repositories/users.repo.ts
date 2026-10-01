@@ -1,9 +1,10 @@
-import type { Role } from '@adda/shared';
+import type { Role, CharacterAppearance, HairStyle, ShirtColor } from '@adda/shared';
 import { db } from '../db/database.ts';
 import { ms } from '../db/convert.ts';
 import { Prisma, type User } from '../generated/prisma/client.ts';
 
-export interface UserRecord {
+export interface UserRecord extends CharacterAppearance {
+  characterSetupComplete?: boolean;
   id: string;
   username: string;
   name: string;
@@ -30,6 +31,9 @@ const toRecord = (u: User): UserRecord => ({
   bio: u.bio,
   interests: u.interests,
   color: u.color,
+  shirtColor: u.shirtColor as ShirtColor | null,
+  hairStyle: u.hairStyle as HairStyle,
+  characterSetupComplete: u.characterSetupComplete,
   passwordHash: u.passwordHash,
   guest: u.isGuest,
   createdAt: ms(u.createdAt),
@@ -81,6 +85,9 @@ export const usersRepo = {
         bio: u.bio,
         interests: u.interests,
         color: u.color,
+        shirtColor: u.shirtColor ?? null,
+        hairStyle: u.hairStyle ?? 'hair01',
+        characterSetupComplete: u.characterSetupComplete ?? true,
         passwordHash: u.passwordHash,
         isGuest: u.guest,
         createdAt: u.createdAt,
@@ -104,5 +111,11 @@ export const usersRepo = {
       where: { id },
       data: { name: p.name, branch: p.branch, year: p.year, section: p.section, bio: p.bio, interests: p.interests },
     });
+  },
+
+  async updateCharacter(id: string, input: { shirtColor: ShirtColor | null; hairStyle: HairStyle }): Promise<UserRecord> {
+    return toRecord(await db().user.update({
+      where: { id }, data: { ...input, characterSetupComplete: true },
+    }));
   },
 };

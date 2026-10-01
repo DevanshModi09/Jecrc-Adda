@@ -6,7 +6,20 @@ export type ClassKind = 'Lecture' | 'Lab' | 'Tutorial';
 export type TimerMode = 'focus' | 'break';
 export type Role = 'student' | 'admin';
 
-export interface PublicUser {
+/** Curated existing arcade colors. Null retains an older player's assigned color. */
+export const SHIRT_COLORS = { green: '#7cff6b', cyan: '#3ef2e0', pink: '#ff3ea5', yellow: '#ffe04a', purple: '#8b6cff', orange: '#ff8a3d' } as const;
+export type ShirtColor = keyof typeof SHIRT_COLORS;
+export const HAIR_STYLES = ['hair01', 'hair02'] as const;
+export type HairStyle = typeof HAIR_STYLES[number];
+export interface CharacterAppearance {
+  shirtColor?: ShirtColor | null;
+  hairStyle?: HairStyle;
+}
+export const characterShirt = (player: CharacterAppearance & { color: string }): string =>
+  player.shirtColor ? SHIRT_COLORS[player.shirtColor] : player.color;
+
+export interface PublicUser extends CharacterAppearance {
+  characterSetupComplete?: boolean;
   id: string;
   username: string;
   name: string;
@@ -232,7 +245,7 @@ export interface ApiError {
 export type Facing = 'up' | 'down' | 'left' | 'right';
 
 /** A player on the 2D campus map. Positions are in tiles (floats). */
-export interface WorldPlayer {
+export interface WorldPlayer extends CharacterAppearance {
   id: string;
   name: string;
   color: string;

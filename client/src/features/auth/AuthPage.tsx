@@ -62,7 +62,6 @@ export function AuthPage({ onAuthStart, onAuthFailure, onAuthed }: AuthPageProps
               interests: f.interests ?? '',
             });
       if (!mountedRef.current) return;
-      if (mode === 'register') navigate('/attendance/setup?welcome=1', { replace: true });
       onAuthed(user);
     } catch (err) {
       if (!mountedRef.current) return;

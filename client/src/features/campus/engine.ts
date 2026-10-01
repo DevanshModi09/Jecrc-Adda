@@ -1,5 +1,6 @@
 import { PLATE_TTL_MS, type Facing, type Plate, type ServerMessage, type WorldPlayer } from '@adda/shared';
 import { realtime } from '../../lib/realtime';
+import { characterShirt } from '@adda/shared';
 import { canStand, findPath, H, standOn, TILE, W, type CampusMap, type DiningTable, type Zone } from './map';
 import { drawAvatar, drawBubble, drawLabel } from './render';
 
@@ -229,6 +230,7 @@ export class CampusEngine {
       case 'world:player': {
         const p = msg.player;
         if (p.id === this.myId) {
+          if (this.me) Object.assign(this.me, { shirtColor: p.shirtColor, hairStyle: p.hairStyle });
           // Server refused our step (or we reconnected): snap back.
           if (this.me && Math.hypot(this.me.x - p.x, this.me.y - p.y) > 1.5) Object.assign(this.me, { x: p.x, y: p.y });
           return;
@@ -510,7 +512,7 @@ export class CampusEngine {
       const fx = a.x * TILE;
       const fy = a.y * TILE;
       const sitting = !a.p.moving && this.map.isSeat(a.x, a.y - 0.01);
-      drawAvatar(ctx, fx, fy, a.p.color, a.p.dir, a.p.moving, t, { sitting });
+      drawAvatar(ctx, fx, fy, characterShirt(a.p), a.p.dir, a.p.moving, t, { sitting, hairStyle: a.p.hairStyle });
       drawLabel(ctx, a.self ? 'YOU' : a.p.name.split(' ')[0]!.toUpperCase(), fx, fy - 27, a.self ? '#ffe04a' : '#f4f1ff');
       const b = this.bubbles.get(a.p.id);
       if (b && b.until > now) drawBubble(ctx, b.text, fx, fy - 28);

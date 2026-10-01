@@ -3,6 +3,7 @@ import type { DirectMessage, PublicUser } from '@adda/shared';
 
 // Domain events raised by services; the websocket hub turns them into pushes.
 interface BusEvents {
+  'character:changed': [PublicUser];
   'dm:created': [{ message: DirectMessage; from: PublicUser }];
   'events:changed': [];
   'deadlines:changed': [];

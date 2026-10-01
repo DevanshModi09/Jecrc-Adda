@@ -2,7 +2,8 @@ import type { PublicUser } from '@adda/shared';
 import { usersRepo, type UserRecord } from '../repositories/users.repo.ts';
 import { presence } from '../realtime/presence.ts';
 import { notFound } from '../utils/http.ts';
-import type { ProfileInput } from '../validators/schemas.ts';
+import type { ProfileInput, CharacterInput } from '../validators/schemas.ts';
+import { bus } from '../realtime/bus.ts';
 
 export function toPublicUser(u: UserRecord): PublicUser {
   return {
@@ -16,12 +17,20 @@ export function toPublicUser(u: UserRecord): PublicUser {
     bio: u.bio,
     interests: u.interests,
     color: u.color,
+    shirtColor: u.shirtColor ?? null,
+    hairStyle: u.hairStyle ?? 'hair01',
+    characterSetupComplete: u.characterSetupComplete ?? true,
     online: presence.isOnline(u.id),
     guest: u.guest,
   };
 }
 
 export const usersService = {
+  async updateCharacter(id: string, input: CharacterInput): Promise<PublicUser> {
+    const user = toPublicUser(await usersRepo.updateCharacter(id, input));
+    bus.emit('character:changed', user);
+    return user;
+  },
   async get(id: string): Promise<PublicUser> {
     const u = await usersRepo.findById(id);
     if (!u) throw notFound('User');

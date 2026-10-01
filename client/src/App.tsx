@@ -23,6 +23,7 @@ import { AttendancePage } from './features/attendance/AttendancePage';
 import { AttendanceSetupPage } from './features/attendance/AttendanceSetupPage';
 import { AssignmentsPage } from './features/assignments/AssignmentsPage';
 import { FeedPage } from './features/feed/FeedPage';
+import { CharacterPage } from './features/character/CharacterPage';
 
 function LegacyRoomRedirect() {
   const { roomId } = useParams();
@@ -52,7 +53,7 @@ export function App() {
 
   const onAuthed = useCallback((u: PublicUser) => {
     // Logging in always lands on home, whatever page you were on when you left.
-    navigate('/', { replace: true });
+    navigate(u.characterSetupComplete === false ? '/character/setup' : '/', { replace: true });
     queryClient.setQueryData(keys.me, u);
   }, [navigate]);
 
@@ -95,6 +96,13 @@ export function App() {
     content = <Loading label="INSERT COIN" />;
   } else if (!user) {
     content = <AuthPage onAuthStart={beginAuth} onAuthFailure={failAuth} onAuthed={onAuthed} />;
+  } else if (user.characterSetupComplete === false) {
+    content = (
+      <Routes>
+        <Route path="/character/setup" element={<main className="main character-onboarding"><CharacterPage user={user} onboarding onLogout={logout} /></main>} />
+        <Route path="*" element={<Navigate to="/character/setup" replace />} />
+      </Routes>
+    );
   } else {
     content = (
     <Routes>
@@ -117,6 +125,7 @@ export function App() {
         <Route path="chat/:userId" element={<ChatPage me={user} />} />
         <Route path="events" element={<EventsPage me={user} />} />
         <Route path="profile" element={<ProfilePage user={user} />} />
+        <Route path="character" element={<CharacterPage user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
